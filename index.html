@@ -254,6 +254,23 @@
       }
     };
 
+    // Función para MOVER PESTAÑAS (Izquierda/Derecha)
+    window.moverFase = function(direccion) {
+      let idx = appData.config.fases.indexOf(window.currentFase);
+      if (idx === -1) return;
+      if (direccion === -1 && idx > 0) {
+        let temp = appData.config.fases[idx - 1];
+        appData.config.fases[idx - 1] = appData.config.fases[idx];
+        appData.config.fases[idx] = temp;
+        guardarDatos();
+      } else if (direccion === 1 && idx < appData.config.fases.length - 1) {
+        let temp = appData.config.fases[idx + 1];
+        appData.config.fases[idx + 1] = appData.config.fases[idx];
+        appData.config.fases[idx] = temp;
+        guardarDatos();
+      }
+    };
+
     // FUNCIONES DEL DIRECTO Y GOLES
     window.sumarGol = function(index, equipo) {
       let m = appData.partidos[index];
@@ -346,6 +363,8 @@
       });
       if (window.modoEdicion) {
          tabsHTML += `<button class="tab-btn action-tab" onclick="window.nuevaFase()">➕ Nueva Fase</button>`;
+         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(-1)" title="Mover izquierda">⬅️</button>`;
+         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(1)" title="Mover derecha">➡️</button>`;
          tabsHTML += `<button class="tab-btn edit-tab" onclick="window.renombrarFase('${window.currentFase}')" title="Renombrar pestaña">✏️</button>`;
          tabsHTML += `<button class="tab-btn edit-tab" onclick="window.borrarFase('${window.currentFase}')" title="Borrar pestaña" style="color:#991b1b;">🗑️</button>`;
       }
