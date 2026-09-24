@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Equipo - Futsal</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #f8c300;
+      --secondary: #0b2265;
+      --dark: #07153b;
+      --bg: #f4f6fa;
+      --card-bg: #ffffff;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
+    
+    header { position: relative; background: linear-gradient(135deg, var(--secondary), var(--dark)); color: #fff; padding: 20px 16px; text-align: center; border-bottom: 4px solid var(--primary); }
+    header h1 { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--primary); margin-bottom: 4px; }
+    header p { font-size: 0.85rem; opacity: 0.9; }
+    
+    .header-edit input { width: 100%; text-align: center; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.5); color: white; border-radius: 6px; padding: 4px; margin-bottom: 4px; }
+    .header-edit input.title-input { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+    
+    #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
+    
+    .container { max-width: 600px; margin: 0 auto; padding: 14px; }
+    .card { background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--secondary); position: relative; }
+    .card.local { border-left-color: var(--primary); }
+    
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .badge { font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
+    .badge-local { background: #fef3c7; color: #92400e; }
+    .badge-visitante { background: #e0e7ff; color: #3730a3; }
+    
+    .jornada-edit { width: 80px; padding: 2px 4px; font-size: 0.8rem; font-weight: bold; border: 1px solid #d1d5db; border-radius: 4px; }
+    
+    .vs-container { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; font-weight: 700; font-size: 0.95rem; }
+    .team { flex: 1; }
+    .team.home { text-align: left; }
+    .team.away { text-align: right; }
+    
+    .team-input { width: 100%; font-weight: bold; font-size: 0.9rem; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; text-align: center; }
+    
+    .score-display { display: flex; gap: 8px; font-size: 1.2rem; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; }
+    .score-inputs { display: flex; align-items: center; gap: 4px; }
+    .score-inputs input { width: 36px; height: 34px; text-align: center; font-weight: bold; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 6px; }
+    
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.85rem; }
+    .info-full { grid-column: span 2; }
+    .info-item { background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #f3f4f6; }
+    .info-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 2px; }
+    
+    label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    input[type="text"], input[type="time"], input[type="date"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; margin-top: 2px; }
+    
+    .foto-container { margin-top: 12px; width: 100%; }
+    .foto-img { width: 100%; border-radius: 8px; object-fit: cover; max-height: 300px; display: block; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .foto-uploader { margin-top: 10px; display: flex; gap: 8px; }
+    .btn-upload { flex: 1; text-align: center; background: #f3f4f6; border: 1px dashed #9ca3af; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #4b5563; cursor: pointer; }
+    .btn-delete-item { background: #fee2e2; color: #991b1b; border: none; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    
+    .botones-accion { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+    .btn-wa { background-color: #25d366; }
+    .btn-img { background-color: #3b82f6; }
+    
+    .btn-add-match { width: 100%; background: #10b981; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-new-season { width: 100%; background: #3b82f6; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    #status { text-align: center; font-size: 0.8rem; margin-top: 10px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+  <header id="mainHeader"></header>
+  <div id="status">Conectando...</div>
+  
+  <div class="container">
+    <div id="matchList"></div>
+    <div id="adminControls"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs",
+      authDomain: "app-futsal-da9ce.firebaseapp.com",
+      databaseURL: "https://app-futsal-da9ce-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "app-futsal-da9ce",
+      storageBucket: "app-futsal-da9ce.firebasestorage.app",
+      messagingSenderId: "862868077941",
+      appId: "1:862868077941:web:90cebe347e6292410c673c"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const equipoURL = urlParams.get('equipo');
+    const idEquipoActual = equipoURL ? equipoURL : 'alcorcon26';
+    const appRef = ref(db, 'datos_' + idEquipoActual); 
+    
+    let appData = { config: {}, partidos: [] };
+    
+    window.modoEdicion = false;
+    const CLAVE_SECRETA = "padresfsf";
+
+    const datosIniciales = {
+      config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada" },
+      partidos: [
+        { id: 1, jornada: "Jornada 1", fecha: "", hora: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+      ]
+    };
+
+    if (idEquipoActual === 'alcorcon26') {
+      datosIniciales.config = { equipo: "AD ALCORCÓN FSF 'B'", categoria: "Infantil Femenino Sala • 1ª Fase" };
+      datosIniciales.partidos = [
+        { id: 1, jornada: "Jornada 1", fecha: "2026-10-03", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 2, jornada: "Jornada 2", fecha: "2026-10-17", hora: "", local: "LEGANÉS F.S. MASDEPORTE 'C'", visitante: "AD ALCORCÓN FSF 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 3, jornada: "Jornada 3", fecha: "2026-10-24", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "CDE C.F.S. EUROSIRIS", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 4, jornada: "Jornada 4", fecha: "2026-11-07", hora: "", local: "SAN FERNANDO 'A'", visitante: "AD ALCORCÓN FSF 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 5, jornada: "Jornada 5", fecha: "2026-11-14", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "COLEGIO ÁBACO FS", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 6, jornada: "Jornada 6", fecha: "2026-11-21", hora: "", local: "TORREJÓN SALA FIVE PLAY 'A'", visitante: "AD ALCORCÓN FSF 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 7, jornada: "Jornada 7", fecha: "2026-11-28", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D.E. SPORT SALA 12 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 8, jornada: "Jornada 8", fecha: "2026-12-12", hora: "", local: "CD RIVAS FUTSAL", visitante: "AD ALCORCÓN FSF 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" },
+        { id: 9, jornada: "Jornada 9", fecha: "2026-12-19", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "CDE ESC. DEP. HCB 'A'", lugar: "Pendiente confirmar", golesL: "", golesV: "", foto: "" }
+      ];
+    }
+
+    window.toggleEdicion = function() {
+      if (!window.modoEdicion) {
+        let pass = prompt("Contraseña de administración:");
+        if (pass === CLAVE_SECRETA) {
+          window.modoEdicion = true;
+          renderApp();
+        } else if (pass !== null) { alert("Contraseña incorrecta."); }
+      } else {
+        window.modoEdicion = false;
+        renderApp();
+      }
+    };
+
+    onValue(appRef, (snapshot) => {
+      const data = snapshot.val();
+      document.getElementById('status').innerText = '🟢 En línea - Equipo: ' + idEquipoActual;
+      if (data) {
+        appData = data;
+        if (!appData.partidos) appData.partidos = [];
+        renderApp();
+      } else {
+        set(appRef, datosIniciales);
+      }
+    });
+
+    function guardarDatos() { set(appRef, appData); }
+
+    window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
+    window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
+
+    window.anadirPartido = function() {
+      const nuevoNumero = appData.partidos.length + 1;
+      appData.partidos.push({
+        id: Date.now(), jornada: `Jornada ${nuevoNumero}`, fecha: "", hora: "", 
+        local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", 
+        golesL: "", golesV: "", foto: ""
+      });
+      guardarDatos();
+    };
+
+    window.borrarPartido = function(index) {
+      if(confirm("¿Seguro que quieres borrar este partido?")) { appData.partidos.splice(index, 1); guardarDatos(); }
+    };
+
+    window.generarNuevoEnlace = function() {
+      let nombre = prompt("Crear nuevo entorno.\nEscribe una palabra sin espacios (ej: cadete27, futsi28, torneo):");
+      if (nombre) {
+        let idLimpio = nombre.toLowerCase().replace(/[^a-z0-9]/g, '');
+        let baseUrl = window.location.href.split('?')[0]; 
+        let nuevoLink = baseUrl + "?equipo=" + idLimpio;
+        
+        prompt("¡Aquí tienes el enlace del nuevo equipo! Cópialo y envíalo al nuevo grupo:", nuevoLink);
+      }
+    };
+
+    function renderApp() {
+      const header = document.getElementById('mainHeader');
+      if (window.modoEdicion) {
+        header.innerHTML = `
+          <div class="header-edit">
+            <input type="text" class="title-input" value="${appData.config.equipo}" onchange="window.actualizarConfig('equipo', this.value)" placeholder="Nombre del Equipo">
+            <input type="text" value="${appData.config.categoria}" onchange="window.actualizarConfig('categoria', this.value)" placeholder="Fase / Categoría">
+          </div>
+          <button id="btnLock" onclick="window.toggleEdicion()">🔓</button>
+        `;
+      } else {
+        header.innerHTML = `<h1>${appData.config.equipo}</h1><p>${appData.config.categoria}</p><button id="btnLock" onclick="window.toggleEdicion()">🔒</button>`;
+      }
+
+      const container = document.getElementById('matchList');
+      container.innerHTML = '';
+
+      appData.partidos.forEach((m, index) => {
+        const eqNombre = appData.config.equipo ? appData.config.equipo.toUpperCase().split(" ")[0] : "EQUIPO";
+        const isLocal = m.local.toUpperCase().includes(eqNombre) || m.local === "NUEVO EQUIPO";
+        const card = document.createElement('div');
+        card.className = `card ${isLocal ? 'local' : 'visitante'}`;
+        card.id = `tarjeta-${index}`; 
+
+        let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
+        let cuerpoHTML = "";
+        
+        if (window.modoEdicion) {
+          cuerpoHTML = `
+            <div class="card-header">
+              <div style="display:flex; align-items:center; gap:5px;"><input type="text" class="jornada-edit" value="${m.jornada}" onchange="window.actualizarDato(${index}, 'jornada', this.value)" style="width: 120px;"></div>
+              <button class="btn-delete-item" onclick="window.borrarPartido(${index})">🗑️ Borrar</button>
+            </div>
+            <div class="vs-container" style="flex-direction: column; gap:10px;">
+              <input type="text" class="team-input" value="${m.local}" onchange="window.actualizarDato(${index}, 'local', this.value)" placeholder="Equipo Local">
+              <div class="score-inputs">
+                <input type="number" min="0" value="${m.golesL}" placeholder="-" onchange="window.actualizarDato(${index}, 'golesL', this.value)">
+                <span>VS</span>
+                <input type="number" min="0" value="${m.golesV}" placeholder="-" onchange="window.actualizarDato(${index}, 'golesV', this.value)">
+              </div>
+              <input type="text" class="team-input" value="${m.visitante}" onchange="window.actualizarDato(${index}, 'visitante', this.value)" placeholder="Equipo Visitante">
+            </div>
+            <div class="info-grid">
+              <div><label>Fecha</label><input type="date" value="${m.fecha}" onchange="window.actualizarDato(${index}, 'fecha', this.value)"></div>
+              <div><label>Hora</label><input type="time" value="${m.hora}" onchange="window.actualizarDato(${index}, 'hora', this.value)"></div>
+              <div class="info-full"><label>Pabellón / Dirección</label><input type="text" value="${m.lugar}" onchange="window.actualizarDato(${index}, 'lugar', this.value)"></div>
+            </div>
+            ${fotoHTML}
+            <div class="foto-uploader">
+              <label class="btn-upload">📸 ${m.foto ? 'Cambiar Foto' : 'Subir Foto'} <input type="file" accept="image/*" onchange="window.procesarFoto(event, ${index})" style="display:none;"></label>
+              ${m.foto ? `<button class="btn-delete-item" onclick="window.actualizarDato(${index}, 'foto', '')">🗑️</button>` : ''}
+            </div>
+          `;
+        } else {
+          cuerpoHTML = `
+            <div class="card-header"><span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada}</span><span class="badge ${isLocal ? 'badge-local' : 'badge-visitante'}">${isLocal ? 'En Casa' : 'Fuera'}</span></div>
+            <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
+            <div class="info-grid"><div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div><div class="info-item"><span class="info-label">⏰ Hora</span>${m.hora || 'Por confirmar'}</div><div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${m.lugar}</div></div>
+            ${fotoHTML}
+            <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
+          `;
+        }
+        card.innerHTML = cuerpoHTML;
+        container.appendChild(card);
+      });
+
+      const adminControls = document.getElementById('adminControls');
+      if (window.modoEdicion) { 
+        adminControls.innerHTML = `
+          <button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido / Jornada</button>
+          <button class="btn-new-season" onclick="window.generarNuevoEnlace()">🚀 Crear Nuevo Equipo / Temporada</button>
+        `; 
+      } else { 
+        adminControls.innerHTML = ''; 
+      }
+    }
+
+    window.procesarFoto = function(event, index) { 
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          let width = img.width, height = img.height;
+          if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          window.actualizarDato(index, 'foto', canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.compartirWA = function(index) {
+      const m = appData.partidos[index];
+      const eq = appData.config.equipo;
+      const texto = (m.golesL !== "" && m.golesV !== "") 
+        ? `🟡 *RESULTADO FINAL* 🟡\n🏆 *${m.jornada}*\n⚽ ${m.local} *${m.golesL}* - *${m.golesV}* ${m.visitante}\n📅 ${m.fecha} | 📍 ${m.lugar}\n\n¡Vamos ${eq}! 💛`
+        : `🟡 *PRÓXIMO PARTIDO* 🟡\n🏆 *${m.jornada}*\n⚽ *${m.local}* vs *${m.visitante}*\n📅 *Fecha:* ${m.fecha}\n⏰ *Hora:* ${m.hora || 'Por confirmar'}\n📍 *Pabellón:* ${m.lugar}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+    };
+
+    window.descargarImagen = function(index) {
+      const estabaEditando = window.modoEdicion;
+      if (estabaEditando) { window.modoEdicion = false; renderApp(); }
+      setTimeout(() => {
+        const cardElement = document.getElementById(`tarjeta-${index}`);
+        const botones = cardElement.querySelector('.botones-accion');
+        if(botones) botones.style.display = 'none';
+        html2canvas(cardElement, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+          if(botones) botones.style.display = 'flex';
+          if (estabaEditando) { window.modoEdicion = true; renderApp(); }
+          const link = document.createElement('a');
+          link.download = `Partido_${appData.partidos[index].jornada.replace(/\s+/g, '_')}.jpg`;
+          link.href = canvas.toDataURL('image/jpeg');
+          link.click();
+        });
+      }, 150); 
+    };
+  </script>
+</body>
+</html>
