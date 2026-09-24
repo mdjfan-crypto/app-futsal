@@ -125,7 +125,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 🔴 TUS CLAVES FIREBASE 🔴
+    // 🔴 CLAVES FIREBASE INTEGRADAS 🔴
     const firebaseConfig = {
       apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
       authDomain: "app-futsal-da9ce.firebaseapp.com",
@@ -152,7 +152,7 @@
 
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "" },
-      partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
+      partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -162,7 +162,7 @@
         fases: ["1ª Fase"],
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png"
       };
-      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
     }
 
     window.toggleEdicion = function() {
@@ -299,7 +299,7 @@
 
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 });
       guardarDatos();
     };
 
@@ -409,9 +409,12 @@
         }
 
         let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
-        let linkMapa = m.lugar;
+        
+        // --- LÓGICA DE MAPAS ---
+        let linkMapaHTML = m.lugar;
         if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
-          linkMapa = `<a href="${m.lugar.startsWith('http') ? m.lugar : 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.lugar)}" target="_blank" style="color: #3b82f6; text-decoration: underline; font-weight: bold;">${m.lugar.startsWith('http') ? 'Ubicación exacta' : m.lugar} 🗺️</a>`;
+          let targetUrl = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
+          linkMapaHTML = `<a href="${targetUrl}" target="_blank" style="color: #3b82f6; text-decoration: underline; font-weight: bold;">${m.lugar} 🗺️</a>`;
         }
 
         let liveBadgeHTML = '';
@@ -474,7 +477,18 @@
             <div class="info-grid">
               <div><label>Fecha</label><input type="date" value="${m.fecha}" onchange="window.actualizarDato(${index}, 'fecha', this.value)"></div>
               <div><label>Hora (Oficial)</label><input type="time" value="${m.hora}" onchange="window.actualizarDato(${index}, 'hora', this.value)"></div>
-              <div class="info-full"><label>Pabellón / Dirección</label><div style="display:flex; gap:4px; margin-top:2px;"><input type="text" value="${m.lugar}" onchange="window.actualizarDato(${index}, 'lugar', this.value)" placeholder="Nombre o enlace de Maps" style="margin-top:0;"><button type="button" onclick="window.open(this.previousElementSibling.value.startsWith('http') ? this.previousElementSibling.value : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(this.previousElementSibling.value), '_blank')" style="background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-size:1rem; padding: 0 8px;">🔎</button></div></div>
+              
+              <!-- CASILLA DOBLE DE MAPAS -->
+              <div class="info-full">
+                <label>Pabellón / Dirección</label>
+                <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+                  <input type="text" id="lugar-input-${index}" value="${m.lugar}" onchange="window.actualizarDato(${index}, 'lugar', this.value)" placeholder="Nombre (Ej: Pabellón Los Cantos)">
+                  <div style="display:flex; gap:4px;">
+                    <input type="text" value="${m.linkMapa || ''}" onchange="window.actualizarDato(${index}, 'linkMapa', this.value)" placeholder="Enlace exacto de Maps (Opcional)" style="flex:1;">
+                    <button type="button" onclick="let link = this.previousElementSibling.value; let lugar = document.getElementById('lugar-input-${index}').value; window.open(link || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lugar), '_blank')" style="background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-size:1rem; padding: 0 8px;" title="Probar ubicación">🔎</button>
+                  </div>
+                </div>
+              </div>
             </div>
             ${fotoHTML}
             <div class="foto-uploader"><label class="btn-upload">📸 ${m.foto ? 'Cambiar Foto' : 'Subir Foto'} <input type="file" accept="image/*" onchange="window.procesarFoto(event, ${index})" style="display:none;"></label>${m.foto ? `<button class="btn-delete-item" onclick="window.actualizarDato(${index}, 'foto', '')">🗑️</button>` : ''}</div>
@@ -486,7 +500,7 @@
             <div class="card-header"><span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada}</span><span class="badge ${isLocal ? 'badge-local' : 'badge-visitante'}">${isLocal ? 'En Casa' : 'Fuera'}</span></div>
             <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
             ${goleadoresPublicoHTML}
-            <div class="info-grid"><div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div><div class="info-item"><span class="info-label">⏰ Hora</span>${m.hora || 'Por confirmar'}</div><div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapa}</div></div>
+            <div class="info-grid"><div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div><div class="info-item"><span class="info-label">⏰ Hora</span>${m.hora || 'Por confirmar'}</div><div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapaHTML}</div></div>
             ${fotoHTML}
             <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
           `;
@@ -560,7 +574,8 @@
       
       let linkMapaWA = "";
       if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
-        linkMapaWA = `\n🗺️ *Mapa:* ${m.lugar.startsWith('http') ? m.lugar : 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.lugar)}`;
+        let targetUrl = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
+        linkMapaWA = `\n🗺️ *Mapa:* ${targetUrl}`;
       }
 
       let estadoTxt = "";
@@ -582,7 +597,7 @@
          goleadoresWA += "\n";
       }
 
-      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}📅 ${m.fecha} | 📍 ${m.lugar.startsWith('http') ? 'Ubicación exacta' : m.lugar}${linkMapaWA}\n\n¡Vamos ${eq}! 💛`;
+      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}📅 ${m.fecha} | 📍 ${m.lugar}${linkMapaWA}\n\n¡Vamos ${eq}! 💛`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
     };
