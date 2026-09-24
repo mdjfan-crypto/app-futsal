@@ -90,7 +90,7 @@
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs",
+      apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
       authDomain: "app-futsal-da9ce.firebaseapp.com",
       databaseURL: "https://app-futsal-da9ce-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "app-futsal-da9ce",
@@ -214,6 +214,12 @@
         card.id = `tarjeta-${index}`; 
 
         let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
+        
+        let linkMapa = m.lugar;
+        if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
+          linkMapa = `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}" target="_blank" style="color: #3b82f6; text-decoration: underline; font-weight: bold;">${m.lugar} 🗺️</a>`;
+        }
+
         let cuerpoHTML = "";
         
         if (window.modoEdicion) {
@@ -234,7 +240,7 @@
             <div class="info-grid">
               <div><label>Fecha</label><input type="date" value="${m.fecha}" onchange="window.actualizarDato(${index}, 'fecha', this.value)"></div>
               <div><label>Hora</label><input type="time" value="${m.hora}" onchange="window.actualizarDato(${index}, 'hora', this.value)"></div>
-              <div class="info-full"><label>Pabellón / Dirección</label><input type="text" value="${m.lugar}" onchange="window.actualizarDato(${index}, 'lugar', this.value)"></div>
+              <div class="info-full"><label>Pabellón / Dirección</label><input type="text" value="${m.lugar}" onchange="window.actualizarDato(${index}, 'lugar', this.value)" placeholder="Ej: Pabellón Los Cantos Alcorcón"></div>
             </div>
             ${fotoHTML}
             <div class="foto-uploader">
@@ -246,7 +252,7 @@
           cuerpoHTML = `
             <div class="card-header"><span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada}</span><span class="badge ${isLocal ? 'badge-local' : 'badge-visitante'}">${isLocal ? 'En Casa' : 'Fuera'}</span></div>
             <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
-            <div class="info-grid"><div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div><div class="info-item"><span class="info-label">⏰ Hora</span>${m.hora || 'Por confirmar'}</div><div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${m.lugar}</div></div>
+            <div class="info-grid"><div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div><div class="info-item"><span class="info-label">⏰ Hora</span>${m.hora || 'Por confirmar'}</div><div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapa}</div></div>
             ${fotoHTML}
             <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
           `;
@@ -289,9 +295,16 @@
     window.compartirWA = function(index) {
       const m = appData.partidos[index];
       const eq = appData.config.equipo;
+      
+      let linkMapaWA = "";
+      if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
+        linkMapaWA = `\n🗺️ *Mapa:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
+      }
+
       const texto = (m.golesL !== "" && m.golesV !== "") 
         ? `🟡 *RESULTADO FINAL* 🟡\n🏆 *${m.jornada}*\n⚽ ${m.local} *${m.golesL}* - *${m.golesV}* ${m.visitante}\n📅 ${m.fecha} | 📍 ${m.lugar}\n\n¡Vamos ${eq}! 💛`
-        : `🟡 *PRÓXIMO PARTIDO* 🟡\n🏆 *${m.jornada}*\n⚽ *${m.local}* vs *${m.visitante}*\n📅 *Fecha:* ${m.fecha}\n⏰ *Hora:* ${m.hora || 'Por confirmar'}\n📍 *Pabellón:* ${m.lugar}`;
+        : `🟡 *PRÓXIMO PARTIDO* 🟡\n🏆 *${m.jornada}*\n⚽ *${m.local}* vs *${m.visitante}*\n📅 *Fecha:* ${m.fecha}\n⏰ *Hora:* ${m.hora || 'Por confirmar'}\n📍 *Pabellón:* ${m.lugar}${linkMapaWA}`;
+      
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
     };
 
