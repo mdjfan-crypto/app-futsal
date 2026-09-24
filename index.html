@@ -20,6 +20,9 @@
     body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
     
     header { position: relative; background: linear-gradient(135deg, var(--secondary), var(--dark)); color: #fff; padding: 20px 16px; text-align: center; border-bottom: 4px solid var(--primary); }
+    .header-logo { max-height: 70px; margin-bottom: 8px; object-fit: contain; }
+    .logo-edit-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+    .btn-logo { background: rgba(255,255,255,0.15); border: 1px dashed rgba(255,255,255,0.4); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
     header h1 { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--primary); margin-bottom: 4px; }
     header p { font-size: 0.85rem; opacity: 0.9; }
     
@@ -122,7 +125,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 🔴 TUS CLAVES FIREBASE (CON LA API KEY REAL) 🔴
+    // 🔴 TUS CLAVES FIREBASE 🔴
     const firebaseConfig = {
       apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
       authDomain: "app-futsal-da9ce.firebaseapp.com",
@@ -144,13 +147,23 @@
     let appData = { config: {}, partidos: [] };
     window.modoEdicion = false;
     window.currentFase = "1ª Fase";
-    window.filtroVista = "proximo"; // Filtro activo por defecto
+    window.filtroVista = "proximo"; 
     const CLAVE_SECRETA = "padresfsf";
 
     const datosIniciales = {
-      config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"] },
+      config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "" },
       partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
     };
+
+    if (idEquipoActual === 'alcorcon26') {
+      datosIniciales.config = { 
+        equipo: "AD ALCORCÓN FSF 'B'", 
+        categoria: "Infantil Femenino Sala • 1ª Fase", 
+        fases: ["1ª Fase"],
+        logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png"
+      };
+      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+    }
 
     window.toggleEdicion = function() {
       if (!window.modoEdicion) {
@@ -187,7 +200,27 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // PESTAÑAS Y FILTROS
+    // GESTIÓN DE PESTAÑAS Y LOGO
+    window.procesarLogo = function(event) { 
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 300;
+          let width = img.width, height = img.height;
+          if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          window.actualizarConfig('logo', canvas.toDataURL('image/png'));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
     window.cambiarFase = function(fase) { window.currentFase = fase; renderApp(); };
     window.setFiltro = function(filtro) { window.filtroVista = filtro; renderApp(); };
     
@@ -282,10 +315,27 @@
 
     function renderApp() {
       const header = document.getElementById('mainHeader');
+      let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
+
       if (window.modoEdicion) {
-        header.innerHTML = `<div class="header-edit"><input type="text" class="title-input" value="${appData.config.equipo}" onchange="window.actualizarConfig('equipo', this.value)" placeholder="Nombre del Equipo"></div><button id="btnLock" onclick="window.toggleEdicion()">🔓</button>`;
+        header.innerHTML = `
+          <div class="logo-edit-container">
+            <label class="btn-logo">📷 ${appData.config.logo ? 'Cambiar Logo' : 'Añadir Logo'} <input type="file" accept="image/*" onchange="window.procesarLogo(event)" style="display:none;"></label>
+            ${appData.config.logo ? `<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig('logo', '')">🗑️</button>` : ''}
+          </div>
+          <div class="header-edit">
+            <input type="text" class="title-input" value="${appData.config.equipo}" onchange="window.actualizarConfig('equipo', this.value)" placeholder="Nombre del Equipo">
+            <input type="text" value="${appData.config.categoria || ''}" onchange="window.actualizarConfig('categoria', this.value)" placeholder="Fase / Categoría">
+          </div>
+          <button id="btnLock" onclick="window.toggleEdicion()">🔓</button>
+        `;
       } else {
-        header.innerHTML = `<h1>${appData.config.equipo}</h1><button id="btnLock" onclick="window.toggleEdicion()">🔒</button>`;
+        header.innerHTML = `
+          ${logoRender}
+          <h1>${appData.config.equipo}</h1>
+          <p>${appData.config.categoria || ''}</p>
+          <button id="btnLock" onclick="window.toggleEdicion()">🔒</button>
+        `;
       }
 
       // Render Pestañas
@@ -314,7 +364,7 @@
         `;
       } else { filterMenu.innerHTML = ''; }
 
-      // Identificar cuál es el próximo partido (el primero sin finalizar en esta fase)
+      // Identificar cuál es el próximo partido
       let indiceProximo = -1;
       for (let i = 0; i < appData.partidos.length; i++) {
          let m = appData.partidos[i];
@@ -333,12 +383,11 @@
 
       appData.partidos.forEach((m, index) => {
         let matchFase = m.fase || "1ª Fase";
-        if (matchFase !== window.currentFase) return; // Fuera de esta pestaña
+        if (matchFase !== window.currentFase) return; 
         
         let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
         let isProximo = (index === indiceProximo);
 
-        // Lógica del filtro para visitantes
         if (!window.modoEdicion) {
            if (window.filtroVista === 'proximo' && !isProximo) return;
            if (window.filtroVista === 'pendientes' && isFinalizado) return;
@@ -352,11 +401,10 @@
         card.className = `card ${isLocal ? 'local' : 'visitante'}`;
         card.id = `tarjeta-${index}`; 
         
-        // Etiqueta destacada si es el próximo partido
         let nextBannerHTML = '';
         if (isProximo && !window.modoEdicion) {
             nextBannerHTML = `<div class="next-match-banner">⭐ Próximo Partido ⭐</div>`;
-            card.style.borderLeftColor = '#10b981'; // Verde brillante para destacar
+            card.style.borderLeftColor = '#10b981'; 
             card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
         }
 
