@@ -107,6 +107,13 @@
     .timer-admin-box button { padding: 4px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 75px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
+
+    /* Estilos del Minuto a Minuto */
+    .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
+    .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+    .log-list { max-height:180px; overflow-y:auto; font-size:0.8rem; display:flex; flex-direction:column; gap:6px; }
+    .log-item { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px; border-radius:6px; border:1px solid #f3f4f6; }
+    .log-time { font-weight:900; color:var(--primary); margin-right:4px; font-variant-numeric:tabular-nums; }
   </style>
 </head>
 <body>
@@ -148,12 +155,12 @@
     window.modoEdicion = false;
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
-    window.initialLoadDone = false; // Control de enlace directo
+    window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [] }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -164,7 +171,7 @@
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛"
       };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [] }];
     }
 
     // Traductor de fecha de YYYY-MM-DD a DD/MM/YYYY
@@ -202,20 +209,21 @@
         }
         
         appData.partidos.forEach((p, idx) => { 
-           if(!p.id) p.id = Date.now() + idx; // Asignar IDs si no tenían para el autoscroll
+           if(!p.id) p.id = Date.now() + idx; 
            if(!p.fase) p.fase = "1ª Fase"; 
+           if(!p.eventos) p.eventos = [];
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
         });
 
-        // 🟢 NUEVO: Lógica para leer el "Ir al directo" de WhatsApp
+        // Lógica para leer el "Ir al directo" de WhatsApp
         const matchIdParam = urlParams.get('match');
         if (matchIdParam && !window.initialLoadDone) {
            const targetMatch = appData.partidos.find(p => p.id == matchIdParam);
            if (targetMatch) {
                window.currentFase = targetMatch.fase || "1ª Fase";
-               window.filtroVista = "todos"; // Forzar filtro "todos" para que el partido no quede oculto
-               window.scrollToMatchId = matchIdParam; // Marcar para hacer scroll luego
+               window.filtroVista = "todos"; 
+               window.scrollToMatchId = matchIdParam; 
            }
            window.initialLoadDone = true; 
         } else if (!window.currentFase || !appData.config.fases.includes(window.currentFase)) {
@@ -230,17 +238,70 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // Función para manejar el cambio de periodo y poner marcador 0-0
+    // Función centralizada para añadir eventos al "Minuto a minuto" con Periodo y Minuto
+    window.agregarEventoRegistro = function(index, texto) {
+      let m = appData.partidos[index];
+      if (!m.eventos) m.eventos = [];
+      
+      let minTxt = "0";
+      let periodoActual = m.estadoPeriodo || "Previo"; // Captura si es 1ª Parte, 2ª Parte...
+
+      if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar' && m.estadoPeriodo !== 'Final' && m.estadoPeriodo !== 'Descanso') {
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { totalSecs += Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000); }
+         minTxt = Math.floor(totalSecs / 60);
+      } else if (m.estadoPeriodo === 'Descanso') {
+         minTxt = "Descanso";
+      } else if (m.estadoPeriodo === 'Final') {
+         minTxt = "Final";
+      }
+      
+      m.eventos.unshift({ id: Date.now() + Math.floor(Math.random()*1000), texto: texto, min: minTxt, periodo: periodoActual });
+      guardarDatos();
+    };
+
+    window.borrarEvento = function(index, evId) {
+      if(confirm("¿Borrar este evento del registro?")) {
+         appData.partidos[index].eventos = appData.partidos[index].eventos.filter(e => e.id != evId);
+         guardarDatos();
+      }
+    };
+
+    window.agregarEventoManual = function(index) {
+      let txt = prompt("📝 Escribe un mensaje para el directo (Ej: ¡Tiro al palo!, Tiempo muerto local):");
+      if(txt && txt.trim() !== "") {
+         window.agregarEventoRegistro(index, "🎙️ " + txt.trim());
+      }
+    };
+
+    // Compartir un evento Flash concreto por WA (ahora incluye la parte)
+    window.compartirFlashWA = function(index, evId) {
+      const m = appData.partidos[index];
+      const ev = m.eventos.find(e => e.id == evId);
+      if(!ev) return;
+      
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      // Formatear el tiempo visualmente (Ej: "Min 14'" o "Descanso")
+      let tiempoWa = isNaN(ev.min) ? ev.min : `Min ${ev.min}'`;
+
+      let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n⏱️ ${ev.periodo} - ${tiempoWa}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
+      
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
+    };
+
+    // Función para manejar el cambio de periodo y registrar en minuto a minuto
     window.cambiarEstadoPeriodo = function(index, valor) {
       let m = appData.partidos[index];
       m.estadoPeriodo = valor;
       
-      // Si el partido arranca, poner marcador a 0-0 si estaba vacío
       if (valor !== "" && valor !== "Sin empezar") {
          if (m.golesL === "") m.golesL = 0;
          if (m.golesV === "") m.golesV = 0;
+         window.agregarEventoRegistro(index, `⏱️ Cambio a: ${valor}`);
+      } else {
+         guardarDatos(); 
       }
-      guardarDatos();
     };
 
     // GESTIÓN DE PESTAÑAS Y LOGO
@@ -317,34 +378,27 @@
     window.sumarGol = function(index, equipo) {
       let m = appData.partidos[index];
       let nombre = prompt("⚽ ¿Quién ha marcado? (Déjalo en blanco si no lo sabes)");
-      let minTxt = "";
       
-      if (nombre && m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar' && m.estadoPeriodo !== 'Final') {
-         let totalSecs = m.tiempoAcumulado || 0;
-         if (m.timerActivo) { totalSecs += Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000); }
-         let mins = Math.floor(totalSecs / 60);
-         minTxt = ` (${mins}')`;
-      }
-      
-      let textoGol = nombre ? nombre.trim() + minTxt : "";
+      let textoGol = nombre ? nombre.trim() : "";
       if (equipo === 'L') { 
         m.golesL = (parseInt(m.golesL) || 0) + 1; 
         if (textoGol) m.goleadoresL = m.goleadoresL ? m.goleadoresL + ", " + textoGol : textoGol;
+        window.agregarEventoRegistro(index, `⚽ GOL ${m.local}` + (nombre ? ` (${nombre.trim()})` : ""));
       } else { 
         m.golesV = (parseInt(m.golesV) || 0) + 1; 
         if (textoGol) m.goleadoresV = m.goleadoresV ? m.goleadoresV + ", " + textoGol : textoGol;
+        window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
-      guardarDatos();
     };
 
     window.toggleTimer = function(index) {
       let m = appData.partidos[index];
       
-      // Lógica automática al dar a PLAY
       if (m.golesL === "") m.golesL = 0;
       if (m.golesV === "") m.golesV = 0;
       if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
          m.estadoPeriodo = '1ª Parte';
+         window.agregarEventoRegistro(index, `⏱️ Comienza el partido`); 
       }
 
       if (m.timerActivo) {
@@ -381,6 +435,7 @@
         if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
            m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0;
            m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+           m.eventos = []; 
         }
       }
       if(["1","2","3","4"].includes(opcion)) guardarDatos();
@@ -388,7 +443,7 @@
 
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [] });
       guardarDatos();
     };
 
@@ -446,7 +501,7 @@
       tabsHTML += `</div>`;
       tabsMenu.innerHTML = tabsHTML;
 
-      // Render Filtros (solo para visitantes)
+      // Render Filtros
       const filterMenu = document.getElementById('filterMenu');
       if (!window.modoEdicion) {
         filterMenu.innerHTML = `
@@ -458,7 +513,6 @@
         `;
       } else { filterMenu.innerHTML = ''; }
 
-      // Identificar cuál es el próximo partido
       let indiceProximo = -1;
       for (let i = 0; i < appData.partidos.length; i++) {
          let m = appData.partidos[i];
@@ -541,6 +595,35 @@
            </div>`;
         }
 
+        // HTML del Registro de Eventos (Minuto a Minuto)
+        let eventosHTML = `
+          <div class="log-container">
+            <div class="log-header">
+              <span>📝 MINUTO A MINUTO</span>
+              ${window.modoEdicion ? `<button onclick="window.agregarEventoManual(${index})" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">+ Mensaje</button>` : ''}
+            </div>
+            <div class="log-list">
+              ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
+                let tiempoVista = isNaN(ev.min) ? ev.min : ev.min + "'";
+                return `
+                <div class="log-item">
+                   <div style="flex:1; line-height:1.4;">
+                     <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo} \vert{}${tiempoVista}]</span><br>
+                     <span style="font-weight:600; color:var(--text);">${ev.texto}</span>
+                   </div>
+                   ${window.modoEdicion ? `
+                     <div style="display:flex; gap:4px; align-items:center;">
+                       <button onclick="window.compartirFlashWA(${index}, '${ev.id}')" style="background:#25d366; color:white; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Aviso Rápido a WhatsApp">💬 WA</button>
+                       <button onclick="window.borrarEvento(${index}, '${ev.id}')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; cursor:pointer;" title="Borrar evento">✖</button>
+                     </div>
+                   ` : ''}
+                </div>
+                `;
+              }).join('') : '<div style="color:#9ca3af; font-style:italic; text-align:center;">No hay eventos registrados...</div>'}
+            </div>
+          </div>
+        `;
+
         let cuerpoHTML = "";
         
         if (window.modoEdicion) {
@@ -590,6 +673,9 @@
                 <label>Hora Inicio Real: <input type="time" value="${m.horaReal || ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)"></label>
               </div>
             </div>
+            
+            <!-- EL REGISTRO MINUTO A MINUTO PARA PADRES -->
+            ${eventosHTML}
 
             <div class="info-grid">
               <div><label>Fecha</label><input type="date" value="${m.fecha}" onchange="window.actualizarDato(${index}, 'fecha', this.value)"></div>
@@ -632,6 +718,10 @@
             <div class="card-header"><span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada}</span><span class="badge ${isLocal ? 'badge-local' : 'badge-visitante'}">${isLocal ? 'En Casa' : 'Fuera'}</span></div>
             <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
             ${goleadoresPublicoHTML}
+            
+            <!-- EL REGISTRO MINUTO A MINUTO PARA PADRES -->
+            ${(m.eventos && m.eventos.length > 0) ? eventosHTML : ''}
+
             <div class="info-grid">
               <div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha ? window.formatearFecha(m.fecha) : 'Sin fijar'}</div>
               <div class="info-item"><span class="info-label">⏰ Partido</span>${m.hora || 'Por confirmar'}</div>
@@ -639,7 +729,7 @@
               <div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapaHTML}</div>
             </div>
             ${fotoHTML}
-            <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
+            <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 Resumen WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
           `;
         }
         card.innerHTML = cuerpoHTML;
@@ -655,7 +745,7 @@
         adminControls.innerHTML = `<button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button><button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:20px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>`; 
       } else { adminControls.innerHTML = ''; }
 
-      // 🟢 NUEVO: Efecto de iluminación y Scroll hacia el partido al venir de WhatsApp
+      // Efecto de iluminación y Scroll hacia el partido al venir de WhatsApp
       if (window.scrollToMatchId) {
         const targetIndex = appData.partidos.findIndex(p => p.id == window.scrollToMatchId);
         if (targetIndex > -1) {
@@ -664,11 +754,11 @@
             if (cardEl) {
                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                cardEl.style.boxShadow = '0 0 0 4px var(--primary)';
-               setTimeout(() => { cardEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }, 3000); // Quita el brillo a los 3 segundos
+               setTimeout(() => { cardEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }, 3000); 
             }
           }, 300);
         }
-        window.scrollToMatchId = null; // Limpiar para que no lo haga cada segundo
+        window.scrollToMatchId = null; 
       }
     }
 
