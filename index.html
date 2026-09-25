@@ -163,7 +163,7 @@
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛"
       };
-      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
     }
 
     // Traductor de fecha de YYYY-MM-DD a DD/MM/YYYY
@@ -218,6 +218,19 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
+    // Función para manejar el cambio de periodo y poner marcador 0-0
+    window.cambiarEstadoPeriodo = function(index, valor) {
+      let m = appData.partidos[index];
+      m.estadoPeriodo = valor;
+      
+      // Si el partido arranca, poner marcador a 0-0 si estaba vacío
+      if (valor !== "" && valor !== "Sin empezar") {
+         if (m.golesL === "") m.golesL = 0;
+         if (m.golesV === "") m.golesV = 0;
+      }
+      guardarDatos();
+    };
+
     // GESTIÓN DE PESTAÑAS Y LOGO
     window.procesarLogo = function(event) { 
       const file = event.target.files[0];
@@ -314,6 +327,14 @@
 
     window.toggleTimer = function(index) {
       let m = appData.partidos[index];
+      
+      // Lógica automática al dar a PLAY
+      if (m.golesL === "") m.golesL = 0;
+      if (m.golesV === "") m.golesV = 0;
+      if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
+         m.estadoPeriodo = '1ª Parte';
+      }
+
       if (m.timerActivo) {
         m.timerActivo = false;
         m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
@@ -542,7 +563,7 @@
             <div class="timer-admin-box">
               <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO (Opcional)</div>
               <div class="timer-admin-row">
-                <select onchange="window.actualizarDato(${index}, 'estadoPeriodo', this.value)">
+                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value)">
                   <option value="" ${!m.estadoPeriodo ? 'selected' : ''}>Sin empezar</option>
                   <option value="1ª Parte" ${m.estadoPeriodo === '1ª Parte' ? 'selected' : ''}>1ª Parte</option>
                   <option value="Descanso" ${m.estadoPeriodo === 'Descanso' ? 'selected' : ''}>Descanso</option>
@@ -677,6 +698,9 @@
       const eq = appData.config.equipo;
       const animo = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${eq}! 💛`;
       
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual);
+      const enlaceDirectoWA = `\n📱 *Ir al directo:* ${appUrl}`;
+
       let linkMapaWA = "";
       if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
         
@@ -720,7 +744,7 @@
       let horaWA = `\n⏰ *Partido:* ${m.hora || 'Por confirmar'}`;
       let presentacionWA = m.horaPresentacion ? `\n⏱️ *Cita:* ${m.horaPresentacion}` : "";
 
-      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}${fechaWA}${horaWA}${presentacionWA}${linkMapaWA}\n\n${animo}`;
+      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}${fechaWA}${horaWA}${presentacionWA}${linkMapaWA}\n${enlaceDirectoWA}\n\n${animo}`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
     };
