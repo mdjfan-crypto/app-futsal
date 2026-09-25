@@ -166,6 +166,16 @@
       datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
     }
 
+    // Traductor de fecha de YYYY-MM-DD a DD/MM/YYYY
+    window.formatearFecha = function(fechaOriginal) {
+      if (!fechaOriginal) return '';
+      const partes = fechaOriginal.split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+      return fechaOriginal;
+    };
+
     window.toggleEdicion = function() {
       if (!window.modoEdicion) {
         let pass = prompt("Contraseña de administración:");
@@ -590,7 +600,7 @@
             <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
             ${goleadoresPublicoHTML}
             <div class="info-grid">
-              <div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha || 'Sin fijar'}</div>
+              <div class="info-item"><span class="info-label">📅 Fecha</span>${m.fecha ? window.formatearFecha(m.fecha) : 'Sin fijar'}</div>
               <div class="info-item"><span class="info-label">⏰ Partido</span>${m.hora || 'Por confirmar'}</div>
               ${m.horaPresentacion ? `<div class="info-item"><span class="info-label">⏱️ Presentación</span>${m.horaPresentacion}</div>` : ''}
               <div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapaHTML}</div>
@@ -706,7 +716,7 @@
          goleadoresWA += "\n";
       }
 
-      let fechaWA = m.fecha ? `\n📅 *Fecha:* ${m.fecha}` : "\n📅 *Fecha:* Sin fijar";
+      let fechaWA = m.fecha ? `\n📅 *Fecha:* ${window.formatearFecha(m.fecha)}` : "\n📅 *Fecha:* Sin fijar";
       let horaWA = `\n⏰ *Partido:* ${m.hora || 'Por confirmar'}`;
       let presentacionWA = m.horaPresentacion ? `\n⏱️ *Cita:* ${m.horaPresentacion}` : "";
 
