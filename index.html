@@ -108,10 +108,13 @@
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 75px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
 
-    /* Estilos del Minuto a Minuto */
+    /* Estilos del Minuto a Minuto con 3 items y Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
     .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
-    .log-list { max-height:180px; overflow-y:auto; font-size:0.8rem; display:flex; flex-direction:column; gap:6px; }
+    .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+    .log-list::-webkit-scrollbar { width: 5px; }
+    .log-list::-webkit-scrollbar-track { background: transparent; }
+    .log-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .log-item { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px; border-radius:6px; border:1px solid #f3f4f6; }
     .log-time { font-weight:900; color:var(--primary); margin-right:4px; font-variant-numeric:tabular-nums; }
   </style>
@@ -174,7 +177,6 @@
       datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [] }];
     }
 
-    // Traductor de fecha de YYYY-MM-DD a DD/MM/YYYY
     window.formatearFecha = function(fechaOriginal) {
       if (!fechaOriginal) return '';
       const partes = fechaOriginal.split('-');
@@ -216,7 +218,6 @@
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
         });
 
-        // Lógica para leer el "Ir al directo" de WhatsApp
         const matchIdParam = urlParams.get('match');
         if (matchIdParam && !window.initialLoadDone) {
            const targetMatch = appData.partidos.find(p => p.id == matchIdParam);
@@ -238,18 +239,20 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // Función centralizada para añadir eventos al "Minuto a minuto" con Periodo y Minuto
+    // Función de registro de evento (ahora sin "guardarDatos" interno para evitar bloqueos)
     window.agregarEventoRegistro = function(index, texto) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
       
-      let minTxt = "0";
-      let periodoActual = m.estadoPeriodo || "Previo"; // Captura si es 1ª Parte, 2ª Parte...
+      let minTxt = "00:00";
+      let periodoActual = m.estadoPeriodo || "Previo"; 
 
       if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar' && m.estadoPeriodo !== 'Final' && m.estadoPeriodo !== 'Descanso') {
          let totalSecs = m.tiempoAcumulado || 0;
          if (m.timerActivo) { totalSecs += Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000); }
-         minTxt = Math.floor(totalSecs / 60);
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
+         minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
       } else if (m.estadoPeriodo === 'Descanso') {
          minTxt = "Descanso";
       } else if (m.estadoPeriodo === 'Final') {
@@ -257,7 +260,6 @@
       }
       
       m.eventos.unshift({ id: Date.now() + Math.floor(Math.random()*1000), texto: texto, min: minTxt, periodo: periodoActual });
-      guardarDatos();
     };
 
     window.borrarEvento = function(index, evId) {
@@ -271,10 +273,10 @@
       let txt = prompt("📝 Escribe un mensaje para el directo (Ej: ¡Tiro al palo!, Tiempo muerto local):");
       if(txt && txt.trim() !== "") {
          window.agregarEventoRegistro(index, "🎙️ " + txt.trim());
+         guardarDatos();
       }
     };
 
-    // Compartir un evento Flash concreto por WA (ahora incluye la parte)
     window.compartirFlashWA = function(index, evId) {
       const m = appData.partidos[index];
       const ev = m.eventos.find(e => e.id == evId);
@@ -282,15 +284,14 @@
       
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
-      // Formatear el tiempo visualmente (Ej: "Min 14'" o "Descanso")
-      let tiempoWa = isNaN(ev.min) ? ev.min : `Min ${ev.min}'`;
+      // Manejo visual de segundos en WhatsApp
+      let tiempoWa = (ev.min === "Descanso" || ev.min === "Final") ? ev.min : `Min ${ev.min}`;
 
       let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n⏱️ ${ev.periodo} - ${tiempoWa}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
-    // Función para manejar el cambio de periodo y registrar en minuto a minuto
     window.cambiarEstadoPeriodo = function(index, valor) {
       let m = appData.partidos[index];
       m.estadoPeriodo = valor;
@@ -299,9 +300,8 @@
          if (m.golesL === "") m.golesL = 0;
          if (m.golesV === "") m.golesV = 0;
          window.agregarEventoRegistro(index, `⏱️ Cambio a: ${valor}`);
-      } else {
-         guardarDatos(); 
       }
+      guardarDatos(); 
     };
 
     // GESTIÓN DE PESTAÑAS Y LOGO
@@ -389,6 +389,7 @@
         if (textoGol) m.goleadoresV = m.goleadoresV ? m.goleadoresV + ", " + textoGol : textoGol;
         window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
+      guardarDatos();
     };
 
     window.toggleTimer = function(index) {
@@ -396,8 +397,10 @@
       
       if (m.golesL === "") m.golesL = 0;
       if (m.golesV === "") m.golesV = 0;
+      
       if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
          m.estadoPeriodo = '1ª Parte';
+         // Al usar agregarEventoRegistro, capturará el tiempo como 00:00 ya que aún no hemos activado timerActivo
          window.agregarEventoRegistro(index, `⏱️ Comienza el partido`); 
       }
 
@@ -408,7 +411,8 @@
         m.timerActivo = true;
         m.timerInicio = Date.now();
       }
-      guardarDatos();
+      
+      guardarDatos(); // Guardamos una única vez para evitar la condición de carrera
     };
 
     window.setMinutos = function(index, mins) {
@@ -604,11 +608,10 @@
             </div>
             <div class="log-list">
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
-                let tiempoVista = isNaN(ev.min) ? ev.min : ev.min + "'";
                 return `
                 <div class="log-item">
                    <div style="flex:1; line-height:1.4;">
-                     <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo} \vert{}${tiempoVista}]</span><br>
+                     <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo} \vert{}${ev.min}]</span><br>
                      <span style="font-weight:600; color:var(--text);">${ev.texto}</span>
                    </div>
                    ${window.modoEdicion ? `
@@ -674,7 +677,7 @@
               </div>
             </div>
             
-            <!-- EL REGISTRO MINUTO A MINUTO PARA PADRES -->
+            <!-- EL REGISTRO MINUTO A MINUTO PARA ADMIN -->
             ${eventosHTML}
 
             <div class="info-grid">
@@ -844,7 +847,10 @@
       else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
          let mins = Math.floor((m.tiempoAcumulado || 0) / 60);
          if (m.timerActivo) { mins = Math.floor(((m.tiempoAcumulado || 0) + Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000)) / 60); }
-         let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ` (Min ${mins}')` : '';
+         let secs = (m.tiempoAcumulado || 0) % 60;
+         if (m.timerActivo) { secs = Math.floor(((m.tiempoAcumulado || 0) + Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000))) % 60; }
+         
+         let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ` (Min ${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')})` : '';
          let inicioWA = m.horaReal ? ` (Inició a las ${m.horaReal})` : '';
          estadoTxt = `🔴 *EN DIRECTO: ${m.estadoPeriodo}${minTxt}${inicioWA}* 🔴`;
       } 
