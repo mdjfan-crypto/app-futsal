@@ -45,7 +45,7 @@
     .filter-btn { flex: 1; background: transparent; border: none; padding: 8px 4px; font-weight: 700; font-size: 0.85rem; color: #4b5563; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
     .filter-btn.active { background: #ffffff; color: var(--dark); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     
-    .card { background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--secondary); position: relative; }
+    .card { background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--secondary); position: relative; transition: box-shadow 0.5s ease; }
     .card.local { border-left-color: var(--primary); }
     
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -148,11 +148,12 @@
     window.modoEdicion = false;
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
+    window.initialLoadDone = false; // Control de enlace directo
     const CLAVE_SECRETA = "padresfsf";
 
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
-      partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -163,7 +164,7 @@
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛"
       };
-      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
     }
 
     // Traductor de fecha de YYYY-MM-DD a DD/MM/YYYY
@@ -200,13 +201,24 @@
            appData.config.fases = computedFases.length > 0 ? computedFases : ["1ª Fase"];
         }
         
-        appData.partidos.forEach(p => { 
+        appData.partidos.forEach((p, idx) => { 
+           if(!p.id) p.id = Date.now() + idx; // Asignar IDs si no tenían para el autoscroll
            if(!p.fase) p.fase = "1ª Fase"; 
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
         });
 
-        if (!window.currentFase || !appData.config.fases.includes(window.currentFase)) {
+        // 🟢 NUEVO: Lógica para leer el "Ir al directo" de WhatsApp
+        const matchIdParam = urlParams.get('match');
+        if (matchIdParam && !window.initialLoadDone) {
+           const targetMatch = appData.partidos.find(p => p.id == matchIdParam);
+           if (targetMatch) {
+               window.currentFase = targetMatch.fase || "1ª Fase";
+               window.filtroVista = "todos"; // Forzar filtro "todos" para que el partido no quede oculto
+               window.scrollToMatchId = matchIdParam; // Marcar para hacer scroll luego
+           }
+           window.initialLoadDone = true; 
+        } else if (!window.currentFase || !appData.config.fases.includes(window.currentFase)) {
            window.currentFase = appData.config.fases[0];
         }
         
@@ -642,6 +654,22 @@
       if (window.modoEdicion) { 
         adminControls.innerHTML = `<button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button><button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:20px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>`; 
       } else { adminControls.innerHTML = ''; }
+
+      // 🟢 NUEVO: Efecto de iluminación y Scroll hacia el partido al venir de WhatsApp
+      if (window.scrollToMatchId) {
+        const targetIndex = appData.partidos.findIndex(p => p.id == window.scrollToMatchId);
+        if (targetIndex > -1) {
+          setTimeout(() => {
+            const cardEl = document.getElementById('tarjeta-' + targetIndex);
+            if (cardEl) {
+               cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+               cardEl.style.boxShadow = '0 0 0 4px var(--primary)';
+               setTimeout(() => { cardEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }, 3000); // Quita el brillo a los 3 segundos
+            }
+          }, 300);
+        }
+        window.scrollToMatchId = null; // Limpiar para que no lo haga cada segundo
+      }
     }
 
     // MOTOR DEL RELOJ EN TIEMPO REAL
@@ -698,7 +726,7 @@
       const eq = appData.config.equipo;
       const animo = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${eq}! 💛`;
       
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual);
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       const enlaceDirectoWA = `\n📱 *Ir al directo:* ${appUrl}`;
 
       let linkMapaWA = "";
