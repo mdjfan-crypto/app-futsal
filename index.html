@@ -152,7 +152,7 @@
 
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
-      partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
+      partidos: [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -163,7 +163,7 @@
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛"
       };
-      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
+      datosIniciales.partidos = [{ id: 1, fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-10-03", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "" }];
     }
 
     window.toggleEdicion = function() {
@@ -188,8 +188,14 @@
         if (!appData.config.fases) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
            appData.config.fases = computedFases.length > 0 ? computedFases : ["1ª Fase"];
-           appData.partidos.forEach(p => { if(!p.fase) p.fase = "1ª Fase"; });
         }
+        
+        appData.partidos.forEach(p => { 
+           if(!p.fase) p.fase = "1ª Fase"; 
+           if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
+           if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
+        });
+
         if (!window.currentFase || !appData.config.fases.includes(window.currentFase)) {
            window.currentFase = appData.config.fases[0];
         }
@@ -315,9 +321,31 @@
       guardarDatos();
     };
 
+    // NUEVO SISTEMA DE RESETEO INTELIGENTE
+    window.resetearPartido = function(index) {
+      let m = appData.partidos[index];
+      let minsParte = parseInt(m.duracionParte) || 25;
+      
+      let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⏱️ Reiniciar 1ª Parte (Crono a 00:00)\n2. ⏱️ Reiniciar 2ª Parte (Crono a " + minsParte + ":00)\n3. ⚽ Borrar solo Goles y Goleadores\n4. ⚠️ Resetear TODO (Partido nuevo)\n\nEscribe 1, 2, 3 o 4 y pulsa Aceptar:");
+      
+      if (opcion === "1") {
+        m.estadoPeriodo = "1ª Parte"; m.timerActivo = false; m.tiempoAcumulado = 0;
+      } else if (opcion === "2") {
+        m.estadoPeriodo = "2ª Parte"; m.timerActivo = false; m.tiempoAcumulado = minsParte * 60;
+      } else if (opcion === "3") {
+        m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+      } else if (opcion === "4") {
+        if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0;
+           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+        }
+      }
+      if(["1","2","3","4"].includes(opcion)) guardarDatos();
+    };
+
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10 });
       guardarDatos();
     };
 
@@ -334,6 +362,8 @@
     function renderApp() {
       const header = document.getElementById('mainHeader');
       let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
+      
+      let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
 
       if (window.modoEdicion) {
         header.innerHTML = `
@@ -344,7 +374,7 @@
           <div class="header-edit">
             <input type="text" class="title-input" value="${appData.config.equipo}" onchange="window.actualizarConfig('equipo', this.value)" placeholder="Nombre del Equipo">
             <input type="text" value="${appData.config.categoria || ''}" onchange="window.actualizarConfig('categoria', this.value)" placeholder="Fase / Categoría">
-            <input type="text" value="${appData.config.mensajeAnimo || ''}" onchange="window.actualizarConfig('mensajeAnimo', this.value)" placeholder="Mensaje de ánimo (Ej: ¡Vamos chicas! 💛)" style="font-weight:normal; font-style:italic; border-color: rgba(255,255,255,0.3);">
+            <input type="text" value="${animoValor}" onchange="window.actualizarConfig('mensajeAnimo', this.value)" placeholder="Mensaje para WhatsApp (Ej: ¡Vamos chicas! 💛)" style="font-weight:normal; font-style:italic; border-color: rgba(255,255,255,0.3); margin-top:4px;">
           </div>
           <button id="btnLock" onclick="window.toggleEdicion()">🔓</button>
         `;
@@ -431,10 +461,9 @@
 
         let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
         
-        // --- LÓGICA DE MAPAS CON WAZE ---
+        // --- LÓGICA DE MAPAS (SOLO WEB) ---
         let linkMapaHTML = m.lugar;
         if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
-          // Limpiador visual para links intent en la web
           let customLink = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa.trim() : "";
           if (customLink.startsWith("intent://")) {
              let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
@@ -443,12 +472,14 @@
           let targetUrl = customLink ? customLink : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
           let wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(m.lugar)}`;
           
+          let btnMaps = (m.mostrarMaps !== false) ? `<a href="${targetUrl}" target="_blank" style="background:#e5e7eb; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#1f2937; font-weight:bold;">🗺️ Maps</a>` : '';
+          let btnWaze = (m.mostrarWaze !== false) ? `<a href="${wazeUrl}" target="_blank" style="background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#0369a1; font-weight:bold;">🚙 Waze</a>` : '';
+          
+          let botonesDiv = (btnMaps || btnWaze) ? `<div style="display:flex; gap:6px;">${btnMaps}${btnWaze}</div>` : '';
+
           linkMapaHTML = `
             <div style="font-weight:600; color:var(--text); margin-bottom:4px;">${m.lugar}</div>
-            <div style="display:flex; gap:6px;">
-              <a href="${targetUrl}" target="_blank" style="background:#e5e7eb; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#1f2937; font-weight:bold;">🗺️ Maps</a>
-              <a href="${wazeUrl}" target="_blank" style="background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#0369a1; font-weight:bold;">🚙 Waze</a>
-            </div>
+            ${botonesDiv}
           `;
         }
 
@@ -471,7 +502,15 @@
         
         if (window.modoEdicion) {
           cuerpoHTML = `
-            <div class="card-header"><div style="display:flex; gap:5px;"><input type="text" class="jornada-edit" value="${m.jornada}" onchange="window.actualizarDato(${index}, 'jornada', this.value)" style="width: 120px;"></div><button class="btn-delete-item" onclick="window.borrarPartido(${index})">🗑️ Borrar</button></div>
+            <div class="card-header">
+              <div style="display:flex; gap:5px;">
+                <input type="text" class="jornada-edit" value="${m.jornada}" onchange="window.actualizarDato(${index}, 'jornada', this.value)" style="width: 120px;">
+              </div>
+              <div>
+                <button class="btn-delete-item" style="background:#fef3c7; color:#92400e; margin-right:4px;" onclick="window.resetearPartido(${index})" title="Opciones de Reseteo">🔄 Reset</button>
+                <button class="btn-delete-item" onclick="window.borrarPartido(${index})" title="Borrar partido">🗑️ Borrar</button>
+              </div>
+            </div>
             
             <div class="vs-container" style="flex-direction: column; gap:10px;">
               <input type="text" class="team-input" value="${m.local}" onchange="window.actualizarDato(${index}, 'local', this.value)">
@@ -514,7 +553,6 @@
               <div><label>Hora Partido</label><input type="time" value="${m.hora}" onchange="window.actualizarDato(${index}, 'hora', this.value)"></div>
               <div><label>Presentación</label><input type="time" value="${m.horaPresentacion || ''}" onchange="window.actualizarDato(${index}, 'horaPresentacion', this.value)" title="Opcional"></div>
               
-              <!-- SECCIÓN MEJORADA DE BUSCADOR DE MAPAS -->
               <div class="info-full">
                 <label>Pabellón / Dirección</label>
                 <div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">
@@ -527,6 +565,18 @@
                     <button type="button" onclick="let link = this.previousElementSibling.value; if(link) window.open(link, '_blank'); else alert('Pega primero un enlace para probarlo.');" style="background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-size:1rem; padding: 0 8px; font-weight:bold; color:#4b5563;" title="Probar enlace">🔎 Probar</button>
                   </div>
                 </div>
+                
+                <!-- CHECKBOXES PARA ENLACES INDEPENDIENTES -->
+                <div style="display:flex; align-items:center; gap:12px; margin-top:8px; background:#f9fafb; padding:8px; border-radius:6px; border:1px dashed #d1d5db;">
+                  <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mostrar Enlaces en Whatsapp:</span>
+                  <label style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:700; color:var(--text); display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" ${m.mostrarMaps !== false ? 'checked' : ''} onchange="window.actualizarDato(${index}, 'mostrarMaps', this.checked)"> Maps 🗺️
+                  </label>
+                  <label style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:700; color:var(--text); display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" ${m.mostrarWaze !== false ? 'checked' : ''} onchange="window.actualizarDato(${index}, 'mostrarWaze', this.checked)"> Waze 🚙
+                  </label>
+                </div>
+
               </div>
             </div>
             ${fotoHTML}
@@ -615,11 +665,11 @@
     window.compartirWA = function(index) {
       const m = appData.partidos[index];
       const eq = appData.config.equipo;
-      const animo = appData.config.mensajeAnimo || "¡Vamos chicas! 💛";
+      const animo = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${eq}! 💛`;
       
       let linkMapaWA = "";
       if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
-        // Limpiador automático para enlaces feos (intent://) en WhatsApp
+        
         let customLink = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa.trim() : "";
         if (customLink.startsWith("intent://")) {
            let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
@@ -629,8 +679,10 @@
         let targetUrl = customLink ? customLink : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
         let wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(m.lugar)}`;
         
-        // Estructura limpia línea a línea para el mensaje
-        linkMapaWA = `\n📍 *${m.lugar}*\n🗺️ Maps: ${targetUrl}\n🚙 Waze: ${wazeUrl}`;
+        linkMapaWA = `\n📍 *${m.lugar}*`;
+        if (m.mostrarMaps !== false) linkMapaWA += `\n🗺️ Maps: ${targetUrl}`;
+        if (m.mostrarWaze !== false) linkMapaWA += `\n🚙 Waze: ${wazeUrl}`;
+
       } else {
         linkMapaWA = m.lugar ? `\n📍 *${m.lugar}*` : "";
       }
@@ -654,9 +706,11 @@
          goleadoresWA += "\n";
       }
 
+      let fechaWA = m.fecha ? `\n📅 *Fecha:* ${m.fecha}` : "\n📅 *Fecha:* Sin fijar";
+      let horaWA = `\n⏰ *Partido:* ${m.hora || 'Por confirmar'}`;
       let presentacionWA = m.horaPresentacion ? `\n⏱️ *Cita:* ${m.horaPresentacion}` : "";
 
-      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}📅 ${m.fecha} | ⏰ ${m.hora || 'Por confirmar'}${presentacionWA}${linkMapaWA}\n\n${animo}`;
+      const texto = `${estadoTxt}\n🏆 *${m.fase} - ${m.jornada}*\n⚽ ${m.local} ${m.golesL !== "" ? '*'+m.golesL+'*' : ""} - ${m.golesV !== "" ? '*'+m.golesV+'*' : ""} ${m.visitante}\n${goleadoresWA}${fechaWA}${horaWA}${presentacionWA}${linkMapaWA}\n\n${animo}`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
     };
