@@ -30,6 +30,7 @@
     .header-edit input.title-input { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
     
     #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
+    #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; }
     
     .container { max-width: 600px; margin: 0 auto; padding: 14px; }
     
@@ -103,10 +104,10 @@
 
     .timer-admin-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
     .timer-admin-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
-    .timer-admin-box select { padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-size: 0.8rem; font-weight: 600; }
+    .timer-admin-box select { padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-size: 0.8rem; font-weight: 600; background:#f0fdf4; color:#166534; cursor:pointer; }
     .timer-admin-box button { padding: 4px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
-    .timer-admin-box input[type="time"] { width: 75px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
+    .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
 
     /* Estilos del Minuto a Minuto con 3 items y Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
@@ -133,7 +134,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // 🔴 CLAVES FIREBASE INTEGRADAS 🔴
     const firebaseConfig = {
@@ -156,18 +157,37 @@
     
     let appData = { config: {}, partidos: [] };
     
-    // Variables de control de modos
+    // Variables de control
     window.modoEdicion = false;
-    window.modoMarcador = null; // Guardará el índice del partido si entra un delegado
-    
+    window.modoMarcador = null; 
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
+    // LÓGICA DE PRESENCIA (USUARIOS ONLINE)
+    const connectedRef = ref(db, '.info/connected');
+    const myConnId = Date.now() + '_' + Math.floor(Math.random()*1000);
+    const myConnectionsRef = ref(db, `online_${idEquipoActual}/${myConnId}`);
+    
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        onDisconnect(myConnectionsRef).remove();
+        set(myConnectionsRef, true);
+      }
+    });
+
+    let onlineCount = 1;
+    const onlineRef = ref(db, `online_${idEquipoActual}`);
+    onValue(onlineRef, (snap) => {
+       onlineCount = snap.exists() ? Object.keys(snap.val()).length : 0;
+       const badge = document.getElementById('onlineBadge');
+       if (badge) badge.innerText = `👁️ ${onlineCount} online`;
+    });
+
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -184,13 +204,11 @@
     window.formatearFecha = function(fechaOriginal) {
       if (!fechaOriginal) return '';
       const partes = fechaOriginal.split('-');
-      if (partes.length === 3) {
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
-      }
+      if (partes.length === 3) { return `${partes[2]}/${partes[1]}/${partes[0]}`; }
       return fechaOriginal;
     };
 
-    // LÓGICA DE INICIO DE SESIÓN MEJORADA (MAESTRA VS DELEGADO)
+    // LÓGICA DE INICIO DE SESIÓN
     window.toggleEdicion = function() {
       if (!window.modoEdicion && window.modoMarcador === null) {
         let pass = prompt("Contraseña de administrador o PIN de delegado:");
@@ -200,7 +218,6 @@
            window.modoMarcador = null;
            renderApp(); 
         } else if (pass !== null && pass.trim() !== "") {
-           // Comprobar si el pass coincide con el PIN de algún partido
            let pinBuscado = pass.trim();
            let indexDelegado = appData.partidos.findIndex(p => p.pinMarcador && p.pinMarcador === pinBuscado);
            
@@ -214,7 +231,6 @@
            }
         }
       } else {
-        // Cerrar sesión
         window.modoEdicion = false;
         window.modoMarcador = null;
         renderApp();
@@ -264,7 +280,7 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // Función de registro de evento
+    // Función centralizada para añadir eventos y devolver ID para WA automático
     window.agregarEventoRegistro = function(index, texto) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -284,7 +300,9 @@
          minTxt = "Final";
       }
       
-      m.eventos.unshift({ id: Date.now() + Math.floor(Math.random()*1000), texto: texto, min: minTxt, periodo: periodoActual });
+      let newId = Date.now() + Math.floor(Math.random()*1000);
+      m.eventos.unshift({ id: newId, texto: texto, min: minTxt, periodo: periodoActual });
+      return newId;
     };
 
     window.borrarEvento = function(index, evId) {
@@ -315,16 +333,51 @@
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
+    // EL NUEVO DIRECTOR INTELIGENTE DE PARTIDOS
     window.cambiarEstadoPeriodo = function(index, valor) {
+      if(valor === "") return;
       let m = appData.partidos[index];
-      m.estadoPeriodo = valor;
       
-      if (valor !== "" && valor !== "Sin empezar") {
+      if (valor === "1ª Parte") {
+         m.estadoPeriodo = "1ª Parte";
          if (m.golesL === "") m.golesL = 0;
          if (m.golesV === "") m.golesV = 0;
-         window.agregarEventoRegistro(index, `⏱️ Cambio a: ${valor}`);
+         if (!m.horaReal) m.horaReal = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+         m.timerActivo = true;
+         m.timerInicio = Date.now();
+         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`);
+         guardarDatos();
+         setTimeout(() => window.compartirFlashWA(index, evId), 600); // Retraso de medio segundo para que guarde en BD primero
+         
+      } else if (valor === "Descanso") {
+         m.estadoPeriodo = "Descanso";
+         if(m.timerActivo) {
+             m.timerActivo = false;
+             m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
+         }
+         let evId = window.agregarEventoRegistro(index, `⏸️ Fin de la 1ª Parte (Descanso)`);
+         guardarDatos();
+         setTimeout(() => window.compartirFlashWA(index, evId), 600);
+         
+      } else if (valor === "2ª Parte") {
+         m.estadoPeriodo = "2ª Parte";
+         m.timerActivo = true;
+         m.timerInicio = Date.now();
+         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`);
+         guardarDatos();
+         setTimeout(() => window.compartirFlashWA(index, evId), 600);
+         
+      } else if (valor === "Final") {
+         m.estadoPeriodo = "Final";
+         if(m.timerActivo) {
+             m.timerActivo = false;
+             m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
+         }
+         if (!m.horaFinReal) m.horaFinReal = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+         let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido`);
+         guardarDatos();
+         setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
-      guardarDatos(); 
     };
 
     // GESTIÓN DE PESTAÑAS Y LOGO
@@ -417,15 +470,6 @@
 
     window.toggleTimer = function(index) {
       let m = appData.partidos[index];
-      
-      if (m.golesL === "") m.golesL = 0;
-      if (m.golesV === "") m.golesV = 0;
-      
-      if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
-         m.estadoPeriodo = '1ª Parte';
-         window.agregarEventoRegistro(index, `⏱️ Comienza el partido`); 
-      }
-
       if (m.timerActivo) {
         m.timerActivo = false;
         m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
@@ -433,7 +477,6 @@
         m.timerActivo = true;
         m.timerInicio = Date.now();
       }
-      
       guardarDatos(); 
     };
 
@@ -451,14 +494,14 @@
       let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⏱️ Reiniciar 1ª Parte (Crono a 00:00)\n2. ⏱️ Reiniciar 2ª Parte (Crono a " + minsParte + ":00)\n3. ⚽ Borrar solo Goles y Goleadores\n4. ⚠️ Resetear TODO (Partido nuevo)\n\nEscribe 1, 2, 3 o 4 y pulsa Aceptar:");
       
       if (opcion === "1") {
-        m.estadoPeriodo = "1ª Parte"; m.timerActivo = false; m.tiempoAcumulado = 0;
+        m.estadoPeriodo = "1ª Parte"; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
       } else if (opcion === "2") {
-        m.estadoPeriodo = "2ª Parte"; m.timerActivo = false; m.tiempoAcumulado = minsParte * 60;
+        m.estadoPeriodo = "2ª Parte"; m.timerActivo = false; m.tiempoAcumulado = minsParte * 60; m.horaFinReal = "";
       } else if (opcion === "3") {
         m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
       } else if (opcion === "4") {
         if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
-           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0;
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
            m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
            m.eventos = []; 
         }
@@ -468,7 +511,7 @@
 
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" });
       guardarDatos();
     };
 
@@ -482,15 +525,19 @@
       }
     };
 
+    window.mostrarAyudaDelegado = function() {
+      alert("ℹ️ MODO DELEGADO (Para que otro padre anote el marcador)\n\nPASOS:\n1. Inventa un código en el recuadro amarillo (ej: '1234') y cierra tu candado.\n2. Dile al padre que entre a la web, pulse el candado y ponga ese PIN.\n3. Ese padre solo podrá ver ESE partido, y solo podrá anotar goles y usar el panel de directo (sin poder borrar nada).\n\n⏱️ AUTOMATIZACIÓN:\nEn el panel de directo usa el desplegable 'Acción partido...'. Al seleccionar Inicio o Fin, el cronómetro arranca o para solo, captura la hora automáticamente y te prepara el mensaje de WhatsApp al instante.");
+    };
+
     function renderApp() {
       const header = document.getElementById('mainHeader');
       let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
-      
       let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
 
       // RENDER CABECERA SEGÚN MODO
       if (window.modoEdicion) {
         header.innerHTML = `
+          <div id="onlineBadge">👁️ Cargando...</div>
           <div class="logo-edit-container">
             <label class="btn-logo">📷 ${appData.config.logo ? 'Cambiar Logo' : 'Añadir Logo'} <input type="file" accept="image/*" onchange="window.procesarLogo(event)" style="display:none;"></label>
             ${appData.config.logo ? `<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig('logo', '')">🗑️</button>` : ''}
@@ -517,7 +564,7 @@
         `;
       }
 
-      // RENDER PESTAÑAS (Ocultas en Modo Delegado)
+      // RENDER PESTAÑAS
       const tabsMenu = document.getElementById('tabsMenu');
       if (window.modoMarcador === null) {
           let tabsHTML = `<div class="tabs-wrapper">`;
@@ -537,7 +584,7 @@
           tabsMenu.innerHTML = '';
       }
 
-      // RENDER FILTROS (Ocultos en Edicion o Delegado)
+      // RENDER FILTROS
       const filterMenu = document.getElementById('filterMenu');
       if (!window.modoEdicion && window.modoMarcador === null) {
         filterMenu.innerHTML = `
@@ -568,7 +615,7 @@
       appData.partidos.forEach((m, index) => {
         // FILTROS DE VISUALIZACIÓN
         if (window.modoMarcador !== null) {
-            if (index !== window.modoMarcador) return; // En modo delegado solo pinta 1 partido
+            if (index !== window.modoMarcador) return; 
         } else {
             let matchFase = m.fase || "1ª Fase";
             if (matchFase !== window.currentFase) return; 
@@ -620,7 +667,10 @@
         let liveBadgeHTML = '';
         if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
           let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (!m.timerActivo ? 'paused' : '');
-          let inicioRealHTML = m.horaReal ? `<span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inicio: ${m.horaReal})</span>` : '';
+          let inicioInfo = m.horaReal ? ` (Inició a las ${m.horaReal})` : '';
+          let finInfo = m.horaFinReal ? ` (Finalizó a las ${m.horaFinReal})` : '';
+          let appendedInfo = m.estadoPeriodo === 'Final' ? finInfo : inicioInfo;
+          
           liveBadgeHTML = `<div class="live-badge ${extraClass}" id="timer-display-pub-${index}">Cargando...</div>`;
         }
 
@@ -661,6 +711,28 @@
           </div>
         `;
 
+        // DIRECTOR INTELIGENTE DE PARTIDO (HTML PARA EL ADMIN/DELEGADO)
+        let panelDirectoHTML = `
+            <div class="timer-admin-box">
+              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between;">
+                 <span>PANEL DE DIRECTO (Estado: ${m.estadoPeriodo || 'Sin empezar'})</span>
+                 <span><input type="time" value="${m.horaReal || ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)" style="width:70px; padding:2px; height:auto; margin:0;" title="Hora Inicio Real"></span>
+              </div>
+              <div class="timer-admin-row">
+                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:160px;">
+                  <option value="">⚙️ Acción partido...</option>
+                  <option value="1ª Parte">▶️ Iniciar 1ª Parte</option>
+                  <option value="Descanso">⏸️ Finalizar 1ª Parte</option>
+                  <option value="2ª Parte">▶️ Iniciar 2ª Parte</option>
+                  <option value="Final">⏹️ Finalizar Partido</option>
+                </select>
+                <button onclick="window.toggleTimer(${index})" style="background:${m.timerActivo ? '#fee2e2' : '#d1fae5'}; color:${m.timerActivo ? '#991b1b' : '#065f46'};">${m.timerActivo ? '⏸️ Parar' : '▶️ Play'}</button>
+                <input type="number" placeholder="Min" value="${Math.floor((m.tiempoAcumulado || 0)/60)}" onchange="window.setMinutos(${index}, this.value)" title="Ajustar Minuto">
+                <span id="timer-display-admin-${index}" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>
+              </div>
+            </div>
+        `;
+
         let cuerpoHTML = "";
         
         if (window.modoEdicion) {
@@ -693,25 +765,7 @@
               </div>
             </div>
             
-            <div class="timer-admin-box">
-              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO</div>
-              <div class="timer-admin-row">
-                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value)">
-                  <option value="" ${!m.estadoPeriodo ? 'selected' : ''}>Sin empezar</option>
-                  <option value="1ª Parte" ${m.estadoPeriodo === '1ª Parte' ? 'selected' : ''}>1ª Parte</option>
-                  <option value="Descanso" ${m.estadoPeriodo === 'Descanso' ? 'selected' : ''}>Descanso</option>
-                  <option value="2ª Parte" ${m.estadoPeriodo === '2ª Parte' ? 'selected' : ''}>2ª Parte</option>
-                  <option value="Final" ${m.estadoPeriodo === 'Final' ? 'selected' : ''}>Final</option>
-                </select>
-                <button onclick="window.toggleTimer(${index})" style="background:${m.timerActivo ? '#fee2e2' : '#d1fae5'}; color:${m.timerActivo ? '#991b1b' : '#065f46'};">${m.timerActivo ? '⏸️ Parar' : '▶️ Play'}</button>
-                <input type="number" placeholder="Min" value="${Math.floor((m.tiempoAcumulado || 0)/60)}" onchange="window.setMinutos(${index}, this.value)" title="Ajustar Minuto">
-                <span id="timer-display-admin-${index}" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>
-              </div>
-              <div class="timer-admin-row" style="font-size:0.7rem;">
-                <label>Hora Inicio Real: <input type="time" value="${m.horaReal || ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)"></label>
-              </div>
-            </div>
-            
+            ${panelDirectoHTML}
             ${eventosHTML}
 
             <div class="info-grid">
@@ -743,9 +797,11 @@
                 </div>
               </div>
               
-              <!-- CAJA PARA ASIGNAR EL PIN DEL DELEGADO -->
               <div class="info-full" style="background:#fffbeb; padding:8px; border:1px dashed #f59e0b; border-radius:6px;">
-                <label style="color:#b45309;">🔑 PIN Delegado (Para que otro padre anote):</label>
+                <div style="display:flex; justify-content:space-between;">
+                   <label style="color:#b45309;">🔑 PIN Delegado (Para que otro padre anote):</label>
+                   <button onclick="window.mostrarAyudaDelegado()" style="background:#3b82f6; color:white; border:none; padding:2px 6px; border-radius:6px; font-size:0.7rem; font-weight:bold; cursor:pointer;">ℹ️ Ayuda</button>
+                </div>
                 <div style="display:flex; gap:6px; margin-top:4px;">
                    <input type="text" placeholder="Ej: 1234" value="${m.pinMarcador || ''}" onchange="window.actualizarDato(${index}, 'pinMarcador', this.value)" style="flex:0 0 100px; text-align:center; font-weight:bold; border-color:#fcd34d;">
                    <span style="font-size:0.7rem; color:#92400e; align-self:center;">Si configuras este PIN, podrán entrar al candado solo para llevar el marcador de este partido.</span>
@@ -779,22 +835,7 @@
               </div>
             </div>
             
-            <div class="timer-admin-box">
-              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO</div>
-              <div class="timer-admin-row">
-                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value)">
-                  <option value="" ${!m.estadoPeriodo ? 'selected' : ''}>Sin empezar</option>
-                  <option value="1ª Parte" ${m.estadoPeriodo === '1ª Parte' ? 'selected' : ''}>1ª Parte</option>
-                  <option value="Descanso" ${m.estadoPeriodo === 'Descanso' ? 'selected' : ''}>Descanso</option>
-                  <option value="2ª Parte" ${m.estadoPeriodo === '2ª Parte' ? 'selected' : ''}>2ª Parte</option>
-                  <option value="Final" ${m.estadoPeriodo === 'Final' ? 'selected' : ''}>Final</option>
-                </select>
-                <button onclick="window.toggleTimer(${index})" style="background:${m.timerActivo ? '#fee2e2' : '#d1fae5'}; color:${m.timerActivo ? '#991b1b' : '#065f46'};">${m.timerActivo ? '⏸️ Parar' : '▶️ Play'}</button>
-                <input type="number" placeholder="Min" value="${Math.floor((m.tiempoAcumulado || 0)/60)}" onchange="window.setMinutos(${index}, this.value)" title="Ajustar Minuto">
-                <span id="timer-display-admin-${index}" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>
-              </div>
-            </div>
-            
+            ${panelDirectoHTML}
             ${eventosHTML}
           `;
 
@@ -832,7 +873,6 @@
         adminControls.innerHTML = `<button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button><button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:20px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>`; 
       } else { adminControls.innerHTML = ''; }
 
-      // Efecto de iluminación y Scroll hacia el partido al venir de WhatsApp
       if (window.scrollToMatchId && window.modoMarcador === null) {
         const targetIndex = appData.partidos.findIndex(p => p.id == window.scrollToMatchId);
         if (targetIndex > -1) {
@@ -849,7 +889,7 @@
       }
     }
 
-    // MOTOR DEL RELOJ EN TIEMPO REAL
+    // MOTOR DEL RELOJ EN TIEMPO REAL Y REFRESCO VISUAL
     setInterval(() => {
       appData.partidos.forEach((m, index) => {
         let text = m.estadoPeriodo || '';
@@ -862,11 +902,13 @@
         let mins = Math.floor(totalSecs / 60);
         let secs = totalSecs % 60;
         let timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        let inicioInfo = m.horaReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inicio: ${m.horaReal})</span>` : '';
+        
+        let inicioInfo = m.horaReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inició: ${m.horaReal})</span>` : '';
+        let finInfo = m.horaFinReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Finalizó: ${m.horaFinReal})</span>` : '';
 
         const elPub = document.getElementById('timer-display-pub-' + index);
         if(elPub) {
-          if(text === 'Final') { elPub.innerHTML = '✅ RESULTADO FINAL'; }
+          if(text === 'Final') { elPub.innerHTML = '✅ RESULTADO FINAL' + finInfo; }
           else if(text === 'Descanso') { elPub.innerHTML = '⏸️ DESCANSO' + inicioInfo; }
           else if(isLive) {
             elPub.innerHTML = (m.timerActivo ? '<span class="blink">🔴</span> ' : '⏸️ ') + text + ' <span style="margin-left:4px; font-variant-numeric:tabular-nums;">' + timeString + '</span>' + inicioInfo;
@@ -914,7 +956,6 @@
            let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
            customLink = fallbackMatch ? decodeURIComponent(fallbackMatch[1]) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
         }
-        
         let targetUrl = customLink ? customLink : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lugar)}`;
         let wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(m.lugar)}`;
         
@@ -927,7 +968,10 @@
       }
 
       let estadoTxt = "";
-      if (m.estadoPeriodo === 'Final') { estadoTxt = "✅ *RESULTADO FINAL* ✅"; } 
+      if (m.estadoPeriodo === 'Final') { 
+         let finInfo = m.horaFinReal ? ` (Acabó a las ${m.horaFinReal})` : '';
+         estadoTxt = `✅ *RESULTADO FINAL*${finInfo} ✅`; 
+      } 
       else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
          let mins = Math.floor((m.tiempoAcumulado || 0) / 60);
          if (m.timerActivo) { mins = Math.floor(((m.tiempoAcumulado || 0) + Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000)) / 60); }
