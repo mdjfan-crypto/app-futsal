@@ -89,7 +89,7 @@
     .btn-img { background-color: #3b82f6; }
     
     .btn-add-match { width: 100%; background: #10b981; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .btn-new-season { width: 100%; background: #3b82f6; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-new-season { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: white; }
     
     #status { text-align: center; font-size: 0.8rem; margin-top: 10px; color: var(--text-muted); }
 
@@ -109,9 +109,9 @@
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
 
-    /* Estilos del Minuto a Minuto con 3 items y Scroll */
+    /* Estilos del Minuto a Minuto con Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
-    .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+    .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
     .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
     .log-list::-webkit-scrollbar { width: 5px; }
     .log-list::-webkit-scrollbar-track { background: transparent; }
@@ -157,7 +157,6 @@
     
     let appData = { config: {}, partidos: [] };
     
-    // Variables de control
     window.modoEdicion = false;
     window.modoMarcador = null; 
     window.currentFase = "1ª Fase";
@@ -186,7 +185,23 @@
     });
 
     const datosIniciales = {
-      config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
+      config: { 
+         equipo: "NUEVO EQUIPO", 
+         categoria: "Categoría y Temporada", 
+         fases: ["1ª Fase"], 
+         logo: "", 
+         mensajeAnimo: "¡Vamos chicas! 💛",
+         mensajesRapidos: [
+            "🧤 ¡Paradón de nuestra portera!",
+            "🥅 ¡Uy! ¡Tiro al palo!",
+            "🔥 ¡Ocasión clarísima!",
+            "⏱️ Tiempo muerto Local",
+            "⏱️ Tiempo muerto Visitante",
+            "🟨 Tarjeta Amarilla",
+            "🟥 Tarjeta Roja",
+            "⚠️ 5 Faltas acumuladas"
+         ]
+      },
       partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" }]
     };
 
@@ -196,7 +211,8 @@
         categoria: "Infantil Femenino Sala • 1ª Fase", 
         fases: ["1ª Fase"],
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
-        mensajeAnimo: "¡Vamos chicas! 💛"
+        mensajeAnimo: "¡Vamos chicas! 💛",
+        mensajesRapidos: datosIniciales.config.mensajesRapidos
       };
       datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "" }];
     }
@@ -244,6 +260,7 @@
         appData = data;
         if (!appData.partidos) appData.partidos = [];
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
+        if (!appData.config.mensajesRapidos) appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
         
         if (!appData.config.fases) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
@@ -280,7 +297,41 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // Función centralizada para añadir eventos y devolver ID para WA automático
+    // GESTIÓN DE MENSAJES RÁPIDOS
+    window.editarMensajesRapidos = function() {
+      let msgs = appData.config.mensajesRapidos || [];
+      let listaTxt = msgs.map((m, i) => `${i + 1}. ${m}`).join("\n");
+      
+      let accion = prompt("💬 TUS MENSAJES RÁPIDOS ACTUALES:\n\n" + listaTxt + "\n\n¿QUÉ QUIERES HACER?\n- Escribe 'A' para AÑADIR uno nuevo.\n- Escribe su NÚMERO para BORRARLO.\n- Escribe 'R' para RESTAURAR de fábrica.\n- Deja en blanco para CANCELAR.");
+      
+      if (!accion) return;
+      accion = accion.trim().toUpperCase();
+      
+      if (accion === 'A') {
+         let nuevo = prompt("Escribe tu nuevo mensaje (Puedes usar emojis):");
+         if (nuevo && nuevo.trim() !== "") {
+            appData.config.mensajesRapidos.push(nuevo.trim());
+            guardarDatos();
+         }
+      } else if (accion === 'R') {
+         if (confirm("¿Restaurar los 8 mensajes rápidos originales?")) {
+            appData.config.mensajesRapidos = [...datosIniciales.config.mensajesRapidos];
+            guardarDatos();
+         }
+      } else {
+         let num = parseInt(accion);
+         if (!isNaN(num) && num > 0 && num <= msgs.length) {
+            if (confirm("¿Borrar: '" + msgs[num-1] + "'?")) {
+               appData.config.mensajesRapidos.splice(num - 1, 1);
+               guardarDatos();
+            }
+         } else {
+            alert("Acción no reconocida.");
+         }
+      }
+    };
+
+    // Función para añadir eventos al acta
     window.agregarEventoRegistro = function(index, texto) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -313,11 +364,19 @@
     };
 
     window.agregarEventoManual = function(index) {
-      let txt = prompt("📝 Escribe un mensaje para el directo (Ej: ¡Tiro al palo!, Tiempo muerto local):");
+      let txt = prompt("📝 Escribe un mensaje para el directo:");
       if(txt && txt.trim() !== "") {
          window.agregarEventoRegistro(index, "🎙️ " + txt.trim());
          guardarDatos();
       }
+    };
+
+    window.agregarEventoRapido = function(index, selectElement) {
+      let val = selectElement.value;
+      if (!val) return;
+      window.agregarEventoRegistro(index, val);
+      guardarDatos();
+      selectElement.value = ""; 
     };
 
     window.compartirFlashWA = function(index, evId) {
@@ -333,7 +392,7 @@
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
-    // EL NUEVO DIRECTOR INTELIGENTE DE PARTIDOS
+    // EL DIRECTOR INTELIGENTE DE PARTIDOS
     window.cambiarEstadoPeriodo = function(index, valor) {
       if(valor === "") return;
       let m = appData.partidos[index];
@@ -347,7 +406,7 @@
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`);
          guardarDatos();
-         setTimeout(() => window.compartirFlashWA(index, evId), 600); // Retraso de medio segundo para que guarde en BD primero
+         setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
          m.estadoPeriodo = "Descanso";
@@ -470,6 +529,15 @@
 
     window.toggleTimer = function(index) {
       let m = appData.partidos[index];
+      
+      if (m.golesL === "") m.golesL = 0;
+      if (m.golesV === "") m.golesV = 0;
+      
+      if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
+         m.estadoPeriodo = '1ª Parte';
+         window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`); 
+      }
+
       if (m.timerActivo) {
         m.timerActivo = false;
         m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
@@ -533,6 +601,15 @@
       const header = document.getElementById('mainHeader');
       let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
       let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
+
+      // GENERAR OPCIONES DE MENSAJES RÁPIDOS
+      let opcionesRapidasHTML = `<option value="">⚡ Rápido...</option>`;
+      if (appData.config.mensajesRapidos) {
+         appData.config.mensajesRapidos.forEach(msg => {
+            let textoCorto = msg.length > 25 ? msg.substring(0, 25) + "..." : msg;
+            opcionesRapidasHTML += `<option value="${msg}">${textoCorto}</option>`;
+         });
+      }
 
       // RENDER CABECERA SEGÚN MODO
       if (window.modoEdicion) {
@@ -646,7 +723,6 @@
 
         let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
         
-        // LÓGICA DE MAPAS
         let linkMapaHTML = m.lugar;
         if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
           let customLink = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa.trim() : "";
@@ -667,8 +743,8 @@
         let liveBadgeHTML = '';
         if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
           let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (!m.timerActivo ? 'paused' : '');
-          let inicioInfo = m.horaReal ? ` (Inició a las ${m.horaReal})` : '';
-          let finInfo = m.horaFinReal ? ` (Finalizó a las ${m.horaFinReal})` : '';
+          let inicioInfo = m.horaReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inició: ${m.horaReal})</span>` : '';
+          let finInfo = m.horaFinReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Finalizó: ${m.horaFinReal})</span>` : '';
           let appendedInfo = m.estadoPeriodo === 'Final' ? finInfo : inicioInfo;
           
           liveBadgeHTML = `<div class="live-badge ${extraClass}" id="timer-display-pub-${index}">Cargando...</div>`;
@@ -686,9 +762,16 @@
         
         let eventosHTML = `
           <div class="log-container">
-            <div class="log-header">
+            <div class="log-header" style="flex-wrap:wrap; gap:4px;">
               <span>📝 MINUTO A MINUTO</span>
-              ${isEditable ? `<button onclick="window.agregarEventoManual(${index})" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">+ Mensaje</button>` : ''}
+              ${isEditable ? `
+                <div style="display:flex; gap:4px;">
+                  <select onchange="window.agregarEventoRapido(${index}, this)" style="padding:2px 4px; font-size:0.7rem; border-radius:4px; border:1px solid #d1d5db; background:#f3f4f6; color:var(--text); font-weight:bold; max-width:120px;">
+                    ${opcionesRapidasHTML}
+                  </select>
+                  <button onclick="window.agregarEventoManual(${index})" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">✍️ Escribir</button>
+                </div>
+              ` : ''}
             </div>
             <div class="log-list">
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
@@ -711,7 +794,6 @@
           </div>
         `;
 
-        // DIRECTOR INTELIGENTE DE PARTIDO (HTML PARA EL ADMIN/DELEGADO)
         let panelDirectoHTML = `
             <div class="timer-admin-box">
               <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between;">
@@ -736,7 +818,6 @@
         let cuerpoHTML = "";
         
         if (window.modoEdicion) {
-          // --- MODO ADMINISTRADOR COMPLETO ---
           cuerpoHTML = `
             <div class="card-header">
               <div style="display:flex; gap:5px;">
@@ -812,7 +893,6 @@
             <div class="foto-uploader"><label class="btn-upload">📸 ${m.foto ? 'Cambiar Foto' : 'Subir Foto'} <input type="file" accept="image/*" onchange="window.procesarFoto(event, ${index})" style="display:none;"></label>${m.foto ? `<button class="btn-delete-item" onclick="window.actualizarDato(${index}, 'foto', '')">🗑️</button>` : ''}</div>
           `;
         } else if (window.modoMarcador === index) {
-          // --- MODO DELEGADO (RESTRINGIDO) ---
           cuerpoHTML = `
             <div class="card-header">
               <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada} - MODO DELEGADO</span>
@@ -838,9 +918,7 @@
             ${panelDirectoHTML}
             ${eventosHTML}
           `;
-
         } else {
-          // --- MODO PÚBLICO (VISITANTES) ---
           cuerpoHTML = `
             ${nextBannerHTML}
             ${liveBadgeHTML}
@@ -870,7 +948,11 @@
 
       const adminControls = document.getElementById('adminControls');
       if (window.modoEdicion) { 
-        adminControls.innerHTML = `<button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button><button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:20px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>`; 
+        adminControls.innerHTML = `
+          <button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button>
+          <button class="btn-new-season" onclick="window.editarMensajesRapidos()" style="background:#8b5cf6; margin-bottom:10px;">💬 Configurar Mensajes Rápidos</button>
+          <button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>
+        `; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
@@ -889,7 +971,6 @@
       }
     }
 
-    // MOTOR DEL RELOJ EN TIEMPO REAL Y REFRESCO VISUAL
     setInterval(() => {
       appData.partidos.forEach((m, index) => {
         let text = m.estadoPeriodo || '';
@@ -950,7 +1031,6 @@
 
       let linkMapaWA = "";
       if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
-        
         let customLink = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa.trim() : "";
         if (customLink.startsWith("intent://")) {
            let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
@@ -962,7 +1042,6 @@
         linkMapaWA = `\n📍 *${m.lugar}*`;
         if (m.mostrarMaps !== false) linkMapaWA += `\n🗺️ Maps: ${targetUrl}`;
         if (m.mostrarWaze !== false) linkMapaWA += `\n🚙 Waze: ${wazeUrl}`;
-
       } else {
         linkMapaWA = m.lugar ? `\n📍 *${m.lugar}*` : "";
       }
