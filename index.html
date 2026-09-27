@@ -155,7 +155,11 @@
     const appRef = ref(db, 'datos_' + idEquipoActual); 
     
     let appData = { config: {}, partidos: [] };
+    
+    // Variables de control de modos
     window.modoEdicion = false;
+    window.modoMarcador = null; // Guardará el índice del partido si entra un delegado
+    
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
     window.initialLoadDone = false; 
@@ -163,7 +167,7 @@
 
     const datosIniciales = {
       config: { equipo: "NUEVO EQUIPO", categoria: "Categoría y Temporada", fases: ["1ª Fase"], logo: "", mensajeAnimo: "¡Vamos chicas! 💛" },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [] }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -174,7 +178,7 @@
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛"
       };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [] }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "" }];
     }
 
     window.formatearFecha = function(fechaOriginal) {
@@ -186,13 +190,33 @@
       return fechaOriginal;
     };
 
+    // LÓGICA DE INICIO DE SESIÓN MEJORADA (MAESTRA VS DELEGADO)
     window.toggleEdicion = function() {
-      if (!window.modoEdicion) {
-        let pass = prompt("Contraseña de administración:");
-        if (pass === CLAVE_SECRETA) { window.modoEdicion = true; renderApp(); } 
-        else if (pass !== null) { alert("Contraseña incorrecta."); }
+      if (!window.modoEdicion && window.modoMarcador === null) {
+        let pass = prompt("Contraseña de administrador o PIN de delegado:");
+        
+        if (pass === CLAVE_SECRETA) { 
+           window.modoEdicion = true; 
+           window.modoMarcador = null;
+           renderApp(); 
+        } else if (pass !== null && pass.trim() !== "") {
+           // Comprobar si el pass coincide con el PIN de algún partido
+           let pinBuscado = pass.trim();
+           let indexDelegado = appData.partidos.findIndex(p => p.pinMarcador && p.pinMarcador === pinBuscado);
+           
+           if (indexDelegado !== -1) {
+              window.modoMarcador = indexDelegado;
+              window.modoEdicion = false;
+              window.currentFase = appData.partidos[indexDelegado].fase || "1ª Fase";
+              renderApp();
+           } else {
+              alert("Contraseña o PIN incorrecto.");
+           }
+        }
       } else {
+        // Cerrar sesión
         window.modoEdicion = false;
+        window.modoMarcador = null;
         renderApp();
       }
     };
@@ -216,6 +240,7 @@
            if(!p.eventos) p.eventos = [];
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
+           if(!p.pinMarcador) p.pinMarcador = "";
         });
 
         const matchIdParam = urlParams.get('match');
@@ -239,7 +264,7 @@
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
     window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
     
-    // Función de registro de evento (ahora sin "guardarDatos" interno para evitar bloqueos)
+    // Función de registro de evento
     window.agregarEventoRegistro = function(index, texto) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -283,8 +308,6 @@
       if(!ev) return;
       
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
-      
-      // Manejo visual de segundos en WhatsApp
       let tiempoWa = (ev.min === "Descanso" || ev.min === "Final") ? ev.min : `Min ${ev.min}`;
 
       let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n⏱️ ${ev.periodo} - ${tiempoWa}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
@@ -400,7 +423,6 @@
       
       if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
          m.estadoPeriodo = '1ª Parte';
-         // Al usar agregarEventoRegistro, capturará el tiempo como 00:00 ya que aún no hemos activado timerActivo
          window.agregarEventoRegistro(index, `⏱️ Comienza el partido`); 
       }
 
@@ -412,7 +434,7 @@
         m.timerInicio = Date.now();
       }
       
-      guardarDatos(); // Guardamos una única vez para evitar la condición de carrera
+      guardarDatos(); 
     };
 
     window.setMinutos = function(index, mins) {
@@ -422,7 +444,6 @@
       guardarDatos();
     };
 
-    // SISTEMA DE RESETEO INTELIGENTE
     window.resetearPartido = function(index) {
       let m = appData.partidos[index];
       let minsParte = parseInt(m.duracionParte) || 25;
@@ -447,7 +468,7 @@
 
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [] });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" });
       guardarDatos();
     };
 
@@ -467,6 +488,7 @@
       
       let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
 
+      // RENDER CABECERA SEGÚN MODO
       if (window.modoEdicion) {
         header.innerHTML = `
           <div class="logo-edit-container">
@@ -480,6 +502,12 @@
           </div>
           <button id="btnLock" onclick="window.toggleEdicion()">🔓</button>
         `;
+      } else if (window.modoMarcador !== null) {
+        header.innerHTML = `
+          <h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>
+          <p>Solo control de marcadores activado.</p>
+          <button id="btnLock" onclick="window.toggleEdicion()" style="background:#ef4444; color:white; font-size:0.9rem; font-weight:bold;">Salir</button>
+        `;
       } else {
         header.innerHTML = `
           ${logoRender}
@@ -489,25 +517,29 @@
         `;
       }
 
-      // Render Pestañas
+      // RENDER PESTAÑAS (Ocultas en Modo Delegado)
       const tabsMenu = document.getElementById('tabsMenu');
-      let tabsHTML = `<div class="tabs-wrapper">`;
-      appData.config.fases.forEach(f => {
-         tabsHTML += `<button class="tab-btn ${f === window.currentFase ? 'active' : ''}" onclick="window.cambiarFase('${f}')">${f}</button>`;
-      });
-      if (window.modoEdicion) {
-         tabsHTML += `<button class="tab-btn action-tab" onclick="window.nuevaFase()">➕ Nueva Fase</button>`;
-         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(-1)" title="Mover izquierda">⬅️</button>`;
-         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(1)" title="Mover derecha">➡️</button>`;
-         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.renombrarFase('${window.currentFase}')" title="Renombrar pestaña">✏️</button>`;
-         tabsHTML += `<button class="tab-btn edit-tab" onclick="window.borrarFase('${window.currentFase}')" title="Borrar pestaña" style="color:#991b1b;">🗑️</button>`;
+      if (window.modoMarcador === null) {
+          let tabsHTML = `<div class="tabs-wrapper">`;
+          appData.config.fases.forEach(f => {
+             tabsHTML += `<button class="tab-btn ${f === window.currentFase ? 'active' : ''}" onclick="window.cambiarFase('${f}')">${f}</button>`;
+          });
+          if (window.modoEdicion) {
+             tabsHTML += `<button class="tab-btn action-tab" onclick="window.nuevaFase()">➕ Nueva Fase</button>`;
+             tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(-1)" title="Mover izquierda">⬅️</button>`;
+             tabsHTML += `<button class="tab-btn edit-tab" onclick="window.moverFase(1)" title="Mover derecha">➡️</button>`;
+             tabsHTML += `<button class="tab-btn edit-tab" onclick="window.renombrarFase('${window.currentFase}')" title="Renombrar pestaña">✏️</button>`;
+             tabsHTML += `<button class="tab-btn edit-tab" onclick="window.borrarFase('${window.currentFase}')" title="Borrar pestaña" style="color:#991b1b;">🗑️</button>`;
+          }
+          tabsHTML += `</div>`;
+          tabsMenu.innerHTML = tabsHTML;
+      } else {
+          tabsMenu.innerHTML = '';
       }
-      tabsHTML += `</div>`;
-      tabsMenu.innerHTML = tabsHTML;
 
-      // Render Filtros
+      // RENDER FILTROS (Ocultos en Edicion o Delegado)
       const filterMenu = document.getElementById('filterMenu');
-      if (!window.modoEdicion) {
+      if (!window.modoEdicion && window.modoMarcador === null) {
         filterMenu.innerHTML = `
           <div class="filter-wrapper">
             <button class="filter-btn ${window.filtroVista === 'proximo' ? 'active' : ''}" onclick="window.setFiltro('proximo')">🔥 Próximo</button>
@@ -534,15 +566,20 @@
       let partidosMostrados = 0;
 
       appData.partidos.forEach((m, index) => {
-        let matchFase = m.fase || "1ª Fase";
-        if (matchFase !== window.currentFase) return; 
-        
-        let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
-        let isProximo = (index === indiceProximo);
+        // FILTROS DE VISUALIZACIÓN
+        if (window.modoMarcador !== null) {
+            if (index !== window.modoMarcador) return; // En modo delegado solo pinta 1 partido
+        } else {
+            let matchFase = m.fase || "1ª Fase";
+            if (matchFase !== window.currentFase) return; 
+            
+            let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
+            let isProximo = (index === indiceProximo);
 
-        if (!window.modoEdicion) {
-           if (window.filtroVista === 'proximo' && !isProximo) return;
-           if (window.filtroVista === 'pendientes' && isFinalizado) return;
+            if (!window.modoEdicion) {
+               if (window.filtroVista === 'proximo' && !isProximo) return;
+               if (window.filtroVista === 'pendientes' && isFinalizado) return;
+            }
         }
 
         partidosMostrados++;
@@ -554,7 +591,7 @@
         card.id = `tarjeta-${index}`; 
         
         let nextBannerHTML = '';
-        if (isProximo && !window.modoEdicion) {
+        if (index === indiceProximo && !window.modoEdicion && window.modoMarcador === null) {
             nextBannerHTML = `<div class="next-match-banner">⭐ Próximo Partido ⭐</div>`;
             card.style.borderLeftColor = '#10b981'; 
             card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
@@ -562,7 +599,7 @@
 
         let fotoHTML = m.foto ? `<div class="foto-container"><img src="${m.foto}" class="foto-img"></div>` : "";
         
-        // --- LÓGICA DE MAPAS (SOLO WEB) ---
+        // LÓGICA DE MAPAS
         let linkMapaHTML = m.lugar;
         if (m.lugar && !m.lugar.toLowerCase().includes("pendiente") && !m.lugar.toLowerCase().includes("confirmar")) {
           let customLink = (m.linkMapa && m.linkMapa.trim() !== "") ? m.linkMapa.trim() : "";
@@ -577,34 +614,31 @@
           let btnWaze = (m.mostrarWaze !== false) ? `<a href="${wazeUrl}" target="_blank" style="background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#0369a1; font-weight:bold;">🚙 Waze</a>` : '';
           
           let botonesDiv = (btnMaps || btnWaze) ? `<div style="display:flex; gap:6px;">${btnMaps}${btnWaze}</div>` : '';
-
-          linkMapaHTML = `
-            <div style="font-weight:600; color:var(--text); margin-bottom:4px;">${m.lugar}</div>
-            ${botonesDiv}
-          `;
+          linkMapaHTML = `<div style="font-weight:600; color:var(--text); margin-bottom:4px;">${m.lugar}</div>${botonesDiv}`;
         }
 
         let liveBadgeHTML = '';
-        if (!window.modoEdicion && m.estadoPeriodo && m.estadoPeriodo !== "") {
+        if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
           let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (!m.timerActivo ? 'paused' : '');
           let inicioRealHTML = m.horaReal ? `<span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inicio: ${m.horaReal})</span>` : '';
           liveBadgeHTML = `<div class="live-badge ${extraClass}" id="timer-display-pub-${index}">Cargando...</div>`;
         }
 
         let goleadoresPublicoHTML = '';
-        if (!window.modoEdicion && (m.goleadoresL || m.goleadoresV)) {
+        if (!window.modoEdicion && window.modoMarcador === null && (m.goleadoresL || m.goleadoresV)) {
           goleadoresPublicoHTML = `<div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-top:-8px; margin-bottom:12px; padding:0 4px; line-height:1.2;">
              <div style="flex:1; text-align:left;">${m.goleadoresL ? '⚽ ' + m.goleadoresL : ''}</div>
              <div style="flex:1; text-align:right;">${m.goleadoresV ? m.goleadoresV + ' ⚽' : ''}</div>
            </div>`;
         }
 
-        // HTML del Registro de Eventos (Minuto a Minuto)
+        let isEditable = (window.modoEdicion || window.modoMarcador === index);
+        
         let eventosHTML = `
           <div class="log-container">
             <div class="log-header">
               <span>📝 MINUTO A MINUTO</span>
-              ${window.modoEdicion ? `<button onclick="window.agregarEventoManual(${index})" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">+ Mensaje</button>` : ''}
+              ${isEditable ? `<button onclick="window.agregarEventoManual(${index})" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">+ Mensaje</button>` : ''}
             </div>
             <div class="log-list">
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
@@ -614,7 +648,7 @@
                      <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo} \vert{}${ev.min}]</span><br>
                      <span style="font-weight:600; color:var(--text);">${ev.texto}</span>
                    </div>
-                   ${window.modoEdicion ? `
+                   ${isEditable ? `
                      <div style="display:flex; gap:4px; align-items:center;">
                        <button onclick="window.compartirFlashWA(${index}, '${ev.id}')" style="background:#25d366; color:white; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Aviso Rápido a WhatsApp">💬 WA</button>
                        <button onclick="window.borrarEvento(${index}, '${ev.id}')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; cursor:pointer;" title="Borrar evento">✖</button>
@@ -630,6 +664,7 @@
         let cuerpoHTML = "";
         
         if (window.modoEdicion) {
+          // --- MODO ADMINISTRADOR COMPLETO ---
           cuerpoHTML = `
             <div class="card-header">
               <div style="display:flex; gap:5px;">
@@ -659,7 +694,7 @@
             </div>
             
             <div class="timer-admin-box">
-              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO (Opcional)</div>
+              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO</div>
               <div class="timer-admin-row">
                 <select onchange="window.cambiarEstadoPeriodo(${index}, this.value)">
                   <option value="" ${!m.estadoPeriodo ? 'selected' : ''}>Sin empezar</option>
@@ -677,7 +712,6 @@
               </div>
             </div>
             
-            <!-- EL REGISTRO MINUTO A MINUTO PARA ADMIN -->
             ${eventosHTML}
 
             <div class="info-grid">
@@ -698,7 +732,6 @@
                   </div>
                 </div>
                 
-                <!-- CHECKBOXES PARA ENLACES INDEPENDIENTES -->
                 <div style="display:flex; align-items:center; gap:12px; margin-top:8px; background:#f9fafb; padding:8px; border-radius:6px; border:1px dashed #d1d5db;">
                   <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mostrar Enlaces en Whatsapp:</span>
                   <label style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:700; color:var(--text); display:flex; align-items:center; gap:4px;">
@@ -708,13 +741,65 @@
                     <input type="checkbox" ${m.mostrarWaze !== false ? 'checked' : ''} onchange="window.actualizarDato(${index}, 'mostrarWaze', this.checked)"> Waze 🚙
                   </label>
                 </div>
-
+              </div>
+              
+              <!-- CAJA PARA ASIGNAR EL PIN DEL DELEGADO -->
+              <div class="info-full" style="background:#fffbeb; padding:8px; border:1px dashed #f59e0b; border-radius:6px;">
+                <label style="color:#b45309;">🔑 PIN Delegado (Para que otro padre anote):</label>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                   <input type="text" placeholder="Ej: 1234" value="${m.pinMarcador || ''}" onchange="window.actualizarDato(${index}, 'pinMarcador', this.value)" style="flex:0 0 100px; text-align:center; font-weight:bold; border-color:#fcd34d;">
+                   <span style="font-size:0.7rem; color:#92400e; align-self:center;">Si configuras este PIN, podrán entrar al candado solo para llevar el marcador de este partido.</span>
+                </div>
               </div>
             </div>
             ${fotoHTML}
             <div class="foto-uploader"><label class="btn-upload">📸 ${m.foto ? 'Cambiar Foto' : 'Subir Foto'} <input type="file" accept="image/*" onchange="window.procesarFoto(event, ${index})" style="display:none;"></label>${m.foto ? `<button class="btn-delete-item" onclick="window.actualizarDato(${index}, 'foto', '')">🗑️</button>` : ''}</div>
           `;
+        } else if (window.modoMarcador === index) {
+          // --- MODO DELEGADO (RESTRINGIDO) ---
+          cuerpoHTML = `
+            <div class="card-header">
+              <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada} - MODO DELEGADO</span>
+            </div>
+            
+            <div class="vs-container" style="flex-direction: column; gap:10px;">
+              <div style="font-weight:bold; font-size:1.1rem;">${m.local}</div>
+              <div class="score-inputs">
+                <button type="button" class="btn-goal" onclick="window.sumarGol(${index}, 'L')">+1</button>
+                <input type="number" min="0" value="${m.golesL}" onchange="window.actualizarDato(${index}, 'golesL', this.value)">
+                <span>VS</span>
+                <input type="number" min="0" value="${m.golesV}" onchange="window.actualizarDato(${index}, 'golesV', this.value)">
+                <button type="button" class="btn-goal" onclick="window.sumarGol(${index}, 'V')">+1</button>
+              </div>
+              <div style="font-weight:bold; font-size:1.1rem;">${m.visitante}</div>
+              
+              <div style="display:flex; gap:8px; width:100%; margin-top:4px;">
+                <input type="text" placeholder="Goleadores Local" value="${m.goleadoresL || ''}" onchange="window.actualizarDato(${index}, 'goleadoresL', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">
+                <input type="text" placeholder="Goleadores Visitante" value="${m.goleadoresV || ''}" onchange="window.actualizarDato(${index}, 'goleadoresV', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">
+              </div>
+            </div>
+            
+            <div class="timer-admin-box">
+              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center;">PANEL DE DIRECTO</div>
+              <div class="timer-admin-row">
+                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value)">
+                  <option value="" ${!m.estadoPeriodo ? 'selected' : ''}>Sin empezar</option>
+                  <option value="1ª Parte" ${m.estadoPeriodo === '1ª Parte' ? 'selected' : ''}>1ª Parte</option>
+                  <option value="Descanso" ${m.estadoPeriodo === 'Descanso' ? 'selected' : ''}>Descanso</option>
+                  <option value="2ª Parte" ${m.estadoPeriodo === '2ª Parte' ? 'selected' : ''}>2ª Parte</option>
+                  <option value="Final" ${m.estadoPeriodo === 'Final' ? 'selected' : ''}>Final</option>
+                </select>
+                <button onclick="window.toggleTimer(${index})" style="background:${m.timerActivo ? '#fee2e2' : '#d1fae5'}; color:${m.timerActivo ? '#991b1b' : '#065f46'};">${m.timerActivo ? '⏸️ Parar' : '▶️ Play'}</button>
+                <input type="number" placeholder="Min" value="${Math.floor((m.tiempoAcumulado || 0)/60)}" onchange="window.setMinutos(${index}, this.value)" title="Ajustar Minuto">
+                <span id="timer-display-admin-${index}" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>
+              </div>
+            </div>
+            
+            ${eventosHTML}
+          `;
+
         } else {
+          // --- MODO PÚBLICO (VISITANTES) ---
           cuerpoHTML = `
             ${nextBannerHTML}
             ${liveBadgeHTML}
@@ -722,7 +807,6 @@
             <div class="vs-container"><div class="team home">${m.local}</div><div class="score-display"><span>${m.golesL !== "" ? m.golesL : "-"}</span><span>:</span><span>${m.golesV !== "" ? m.golesV : "-"}</span></div><div class="team away">${m.visitante}</div></div>
             ${goleadoresPublicoHTML}
             
-            <!-- EL REGISTRO MINUTO A MINUTO PARA PADRES -->
             ${(m.eventos && m.eventos.length > 0) ? eventosHTML : ''}
 
             <div class="info-grid">
@@ -739,7 +823,7 @@
         container.appendChild(card);
       });
 
-      if (partidosMostrados === 0 && !window.modoEdicion) {
+      if (partidosMostrados === 0 && !window.modoEdicion && window.modoMarcador === null) {
          container.innerHTML = `<div style="text-align:center; padding: 30px 10px; color: var(--text-muted); font-weight:600;">No hay partidos para mostrar en este filtro.</div>`;
       }
 
@@ -749,7 +833,7 @@
       } else { adminControls.innerHTML = ''; }
 
       // Efecto de iluminación y Scroll hacia el partido al venir de WhatsApp
-      if (window.scrollToMatchId) {
+      if (window.scrollToMatchId && window.modoMarcador === null) {
         const targetIndex = appData.partidos.findIndex(p => p.id == window.scrollToMatchId);
         if (targetIndex > -1) {
           setTimeout(() => {
