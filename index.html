@@ -99,6 +99,7 @@
     .live-badge { background-color: #fee2e2; color: #dc2626; padding: 6px; border-radius: 8px; text-align: center; font-weight: 800; font-size: 0.95rem; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; border: 1px solid #fecaca; }
     .live-badge.paused { background-color: #f3f4f6; color: #4b5563; border-color: #d1d5db; }
     .live-badge.final { background-color: #d1fae5; color: #047857; border-color: #a7f3d0; }
+    .live-badge.descanso { background-color: #fef3c7; color: #b45309; border-color: #fde68a; }
     
     .next-match-banner { background:#10b981; color:white; font-size:0.75rem; font-weight:bold; text-align:center; padding:5px; border-radius:8px 8px 0 0; margin:-16px -16px 12px -16px; text-transform:uppercase; letter-spacing:1px; }
 
@@ -109,7 +110,7 @@
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
 
-    /* Estilos del Minuto a Minuto con 3 items y Scroll */
+    /* Estilos del Minuto a Minuto con Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
     .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
     .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
@@ -214,7 +215,7 @@
         mensajeAnimo: "¡Vamos chicas! 💛",
         mensajesRapidos: datosIniciales.config.mensajesRapidos
       };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "", oculto: false }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "", oculto: false, duracionParte: 25, duracionDescanso: 10 }];
     }
 
     window.formatearFecha = function(fechaOriginal) {
@@ -350,7 +351,11 @@
          let secs = totalSecs % 60;
          minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
       } else if (m.estadoPeriodo === 'Descanso') {
-         minTxt = "Descanso";
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { totalSecs = Math.max(0, totalSecs - Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000)); }
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
+         minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
       } else if (m.estadoPeriodo === 'Final') {
          minTxt = "Final";
       } else {
@@ -392,7 +397,7 @@
       
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
-      let tiempoWa = (ev.min === "Descanso" || ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
+      let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
       let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
 
       let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n📌 ${ev.periodo} ${tiempoWa} ${horaWa}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
@@ -441,6 +446,9 @@
          m.timerActivo = true;
          m.timerInicio = Date.now();
          
+         // CRÍTICO: Iniciar reloj oculto de descanso para saber cuánto ha durado
+         m.timerDescansoInicio = Date.now();
+         
          let evId = window.agregarEventoRegistro(index, `⏸️ Fin de la 1ª Parte | Tiempo jugado: ${exactMins}:${exactSecs}`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
@@ -448,20 +456,22 @@
       } else if (valor === "2ª Parte") {
          let modoCero = confirm("⏱️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
          
-         m.estadoPeriodo = "2ª Parte";
-         m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
-         m.timerActivo = true;
-         m.timerInicio = Date.now();
-
-         // COMPROBAR Y REGISTRAR LA DURACIÓN DEL DESCANSO
+         // COMPROBAR Y REGISTRAR LA DURACIÓN DEL DESCANSO EN EL ACTA WEB
          if (m.timerDescansoInicio) {
              let elapsedDescanso = Math.floor((Date.now() - m.timerDescansoInicio) / 1000);
              let minsD = Math.floor(elapsedDescanso / 60);
              let secsD = elapsedDescanso % 60;
              let duracionDescansoStr = `${minsD.toString().padStart(2, '0')}:${secsD.toString().padStart(2, '0')}`;
-             window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración: ${duracionDescansoStr}`);
+             
+             // Registramos el evento pero SIN lanzar WhatsApp
+             window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración real: ${duracionDescansoStr}`, false);
              m.timerDescansoInicio = null;
          }
+
+         m.estadoPeriodo = "2ª Parte";
+         m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
+         m.timerActivo = true;
+         m.timerInicio = Date.now();
 
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
@@ -626,6 +636,23 @@
       m.tiempoAcumulado = (parseInt(mins) || 0) * 60;
       if (m.timerActivo) { m.timerInicio = Date.now(); }
       guardarDatos();
+    };
+
+    window.resetearPartido = function(index) {
+      let m = appData.partidos[index];
+      let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⚽ Borrar solo Goles y Goleadores\n2. ⚠️ Resetear TODO el partido a 0\n\nEscribe 1 o 2 y pulsa Aceptar:");
+      
+      if (opcion === "1") {
+        m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+      } else if (opcion === "2") {
+        if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
+           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+           m.eventos = []; 
+           m.timerDescansoInicio = null;
+        }
+      }
+      if(["1","2"].includes(opcion)) guardarDatos();
     };
 
     window.anadirPartido = function() {
@@ -807,6 +834,9 @@
         let liveBadgeHTML = '';
         if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
           let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (m.estadoPeriodo === 'Descanso' ? 'descanso' : (!m.timerActivo ? 'paused' : ''));
+          let inicioInfo = m.horaReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inició: ${m.horaReal})</span>` : '';
+          let finInfo = m.horaFinReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Finalizó: ${m.horaFinReal})</span>` : '';
+          
           liveBadgeHTML = `<div class="live-badge ${extraClass}" id="timer-display-pub-${index}">Cargando...</div>`;
         }
 
@@ -866,7 +896,7 @@
                  <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Descanso: <input type="number" value="${m.duracionDescanso || 10}" onchange="window.actualizarDato(${index}, 'duracionDescanso', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
               </div>
               <div class="timer-admin-row">
-                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:150px;">
+                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:160px;">
                   <option value="">⚙️ Acción partido...</option>
                   <option value="1ª Parte">▶️ Iniciar 1ª Parte</option>
                   <option value="Descanso">⏸️ Finalizar 1ª Parte</option>
