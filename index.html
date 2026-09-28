@@ -109,7 +109,7 @@
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
 
-    /* Estilos del Minuto a Minuto con Scroll */
+    /* Estilos del Minuto a Minuto con 3 items y Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
     .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
     .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
@@ -275,6 +275,8 @@
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
            if(!p.pinMarcador) p.pinMarcador = "";
            if(p.oculto === undefined) p.oculto = false; 
+           if(p.duracionParte === undefined) p.duracionParte = 25;
+           if(p.duracionDescanso === undefined) p.duracionDescanso = 10;
         });
 
         const matchIdParam = urlParams.get('match');
@@ -398,18 +400,27 @@
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
-    // EL DIRECTOR INTELIGENTE DE PARTIDOS
+    // EL DIRECTOR INTELIGENTE DE PARTIDOS (CON REDONDEO DE TIEMPO)
     window.cambiarEstadoPeriodo = function(index, valor) {
       if(valor === "") return;
       let m = appData.partidos[index];
       let horaLocal = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       let defaultMins = parseInt(m.duracionParte) || 25;
+      let defaultDescanso = parseInt(m.duracionDescanso) || 10;
+      
+      // Calcular tiempo exacto actual para verificaciones de finalización temprana
+      let elapsed = m.tiempoAcumulado || 0;
+      if (m.timerActivo) { 
+         let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+         elapsed = m.estadoPeriodo === 'Descanso' ? Math.max(0, elapsed - diff) : elapsed + diff; 
+      }
       
       if (valor === "1ª Parte") {
          m.estadoPeriodo = "1ª Parte";
          if (m.golesL === "") m.golesL = 0;
          if (m.golesV === "") m.golesV = 0;
          if (!m.horaReal) m.horaReal = horaLocal;
+         m.tiempoAcumulado = 0;
          m.timerActivo = true;
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
@@ -417,33 +428,28 @@
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
-         m.estadoPeriodo = "Descanso";
-         if(m.timerActivo) {
-             m.timerActivo = false;
-             m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
+         if (m.estadoPeriodo === "1ª Parte" && elapsed < (defaultMins * 60 - 5)) {
+             if (!confirm(`⏳ ¡Aviso! El cronómetro marca menos de ${defaultMins} min. ¿Seguro que quieres pitar el descanso de todas formas?`)) return;
          }
          
-         // Redondear al minuto más cercano y forzar segundos a 00
-         m.tiempoAcumulado = Math.round((m.tiempoAcumulado || 0) / 60) * 60;
-         let totalSecs = m.tiempoAcumulado;
-         let duracion = `${Math.floor(totalSecs / 60).toString().padStart(2, '0')}:00`;
-
-         // INICIAR RELOJ OCULTO DE DESCANSO
-         m.timerDescansoInicio = Date.now(); 
+         let exactMins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+         let exactSecs = (elapsed % 60).toString().padStart(2, '0');
          
-         let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración: ${duracion}`, true);
+         m.estadoPeriodo = "Descanso";
+         // Inicio cuenta atrás de descanso
+         m.tiempoAcumulado = defaultDescanso * 60;
+         m.timerActivo = true;
+         m.timerInicio = Date.now();
+         
+         let evId = window.agregarEventoRegistro(index, `⏸️ Fin de la 1ª Parte | Tiempo jugado: ${exactMins}:${exactSecs}`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
-         let modoCero = confirm("⏱️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para empezar en " + defaultMins + ":00 (Modo Continuo).");
+         let modoCero = confirm("⏱️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
          
          m.estadoPeriodo = "2ª Parte";
-         if (modoCero) {
-             m.tiempoAcumulado = 0;
-         } else {
-             m.tiempoAcumulado = defaultMins * 60;
-         }
+         m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
          m.timerActivo = true;
          m.timerInicio = Date.now();
 
@@ -462,20 +468,21 @@
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "Final") {
-         m.estadoPeriodo = "Final";
-         if(m.timerActivo) {
-             m.timerActivo = false;
-             m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
-         }
+         let isContinuo = m.tiempoAcumulado >= (defaultMins * 60 - 5);
+         let target = isContinuo ? (defaultMins * 2 * 60) : (defaultMins * 60);
          
-         // Redondear al minuto más cercano y forzar segundos a 00
-         m.tiempoAcumulado = Math.round((m.tiempoAcumulado || 0) / 60) * 60;
-         let totalSecs = m.tiempoAcumulado;
-         let duracion = `${Math.floor(totalSecs / 60).toString().padStart(2, '0')}:00`;
+         if (m.estadoPeriodo === "2ª Parte" && elapsed < (target - 5)) {
+             if (!confirm(`⏳ ¡Aviso! Aún no se ha cumplido el tiempo reglamentario de la 2ª Parte. ¿Seguro que quieres pitar el final?`)) return;
+         }
 
+         m.estadoPeriodo = "Final";
+         m.timerActivo = false;
          if (!m.horaFinReal) m.horaFinReal = horaLocal;
          
-         let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
+         let exactMins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+         let exactSecs = (elapsed % 60).toString().padStart(2, '0');
+         
+         let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Último Tiempo: ${exactMins}:${exactSecs}`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
@@ -484,10 +491,14 @@
     window.resetCrono = function(index) {
        let m = appData.partidos[index];
        let defaultMins = parseInt(m.duracionParte) || 25;
+       let defaultDescanso = parseInt(m.duracionDescanso) || 10;
        
        if (m.estadoPeriodo === "2ª Parte") {
            let modoCero = confirm("¿Poner el cronómetro de esta 2ª Parte a 00:00?\n\n[Aceptar] = 00:00\n[Cancelar] = " + defaultMins + ":00");
            m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
+       } else if (m.estadoPeriodo === "Descanso") {
+           if(!confirm("¿Volver a poner la cuenta atrás del descanso a " + defaultDescanso + " min?")) return;
+           m.tiempoAcumulado = defaultDescanso * 60;
        } else {
            if(!confirm("¿Poner el cronómetro actual a 00:00?")) return;
            m.tiempoAcumulado = 0;
@@ -597,7 +608,12 @@
 
       if (m.timerActivo) {
         m.timerActivo = false;
-        m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
+        let diff = Math.floor((Date.now() - m.timerInicio) / 1000);
+        if (m.estadoPeriodo === 'Descanso') {
+           m.tiempoAcumulado = Math.max(0, m.tiempoAcumulado - diff);
+        } else {
+           m.tiempoAcumulado = (m.tiempoAcumulado || 0) + diff;
+        }
       } else {
         m.timerActivo = true;
         m.timerInicio = Date.now();
@@ -610,22 +626,6 @@
       m.tiempoAcumulado = (parseInt(mins) || 0) * 60;
       if (m.timerActivo) { m.timerInicio = Date.now(); }
       guardarDatos();
-    };
-
-    window.resetearPartido = function(index) {
-      let m = appData.partidos[index];
-      let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⚽ Borrar solo Goles y Goleadores\n2. ⚠️ Resetear TODO el partido a 0\n\nEscribe 1 o 2 y pulsa Aceptar:");
-      
-      if (opcion === "1") {
-        m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
-      } else if (opcion === "2") {
-        if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
-           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
-           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
-           m.eventos = []; 
-        }
-      }
-      if(["1","2"].includes(opcion)) guardarDatos();
     };
 
     window.anadirPartido = function() {
@@ -806,10 +806,7 @@
 
         let liveBadgeHTML = '';
         if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
-          let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (!m.timerActivo ? 'paused' : '');
-          let inicioInfo = m.horaReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inició: ${m.horaReal})</span>` : '';
-          let finInfo = m.horaFinReal ? ` <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Finalizó: ${m.horaFinReal})</span>` : '';
-          
+          let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (m.estadoPeriodo === 'Descanso' ? 'descanso' : (!m.timerActivo ? 'paused' : ''));
           liveBadgeHTML = `<div class="live-badge ${extraClass}" id="timer-display-pub-${index}">Cargando...</div>`;
         }
 
@@ -838,7 +835,6 @@
             </div>
             <div class="log-list">
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
-                // Nuevo formato visual: hora local solo se pinta si existe en BD (inicios/finales)
                 let horaHtml = ev.hora ? ` | ⌚ ${ev.hora}` : '';
                 return `
                 <div class="log-item">
@@ -861,12 +857,16 @@
 
         let panelDirectoHTML = `
             <div class="timer-admin-box">
-              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between;">
+              <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between; margin-bottom: 6px;">
                  <span>PANEL DE DIRECTO (Estado: ${m.estadoPeriodo || 'Sin empezar'})</span>
                  <span><input type="time" value="${m.horaReal || ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)" style="width:70px; padding:2px; height:auto; margin:0;" title="Hora Inicio Real"></span>
               </div>
+              <div style="display:flex; justify-content:center; gap:12px; margin-bottom:8px;">
+                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Min/Parte: <input type="number" value="${m.duracionParte || 25}" onchange="window.actualizarDato(${index}, 'duracionParte', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
+                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Descanso: <input type="number" value="${m.duracionDescanso || 10}" onchange="window.actualizarDato(${index}, 'duracionDescanso', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
+              </div>
               <div class="timer-admin-row">
-                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:160px;">
+                <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:150px;">
                   <option value="">⚙️ Acción partido...</option>
                   <option value="1ª Parte">▶️ Iniciar 1ª Parte</option>
                   <option value="Descanso">⏸️ Finalizar 1ª Parte</option>
@@ -1044,8 +1044,17 @@
         if (text === '') return;
         
         let isLive = (text === '1ª Parte' || text === '2ª Parte');
+        let isDescanso = (text === 'Descanso');
         let totalSecs = m.tiempoAcumulado || 0;
-        if (m.timerActivo) { totalSecs += Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000); }
+        
+        if (m.timerActivo) { 
+           let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+           if (isDescanso) {
+              totalSecs = Math.max(0, totalSecs - diff);
+           } else {
+              totalSecs += diff;
+           }
+        }
         
         let mins = Math.floor(totalSecs / 60);
         let secs = totalSecs % 60;
@@ -1057,7 +1066,7 @@
         const elPub = document.getElementById('timer-display-pub-' + index);
         if(elPub) {
           if(text === 'Final') { elPub.innerHTML = '✅ RESULTADO FINAL' + finInfo; }
-          else if(text === 'Descanso') { elPub.innerHTML = '⏸️ DESCANSO' + inicioInfo; }
+          else if(isDescanso) { elPub.innerHTML = '⏸️ DESCANSO <span style="margin-left:4px; font-variant-numeric:tabular-nums;">' + timeString + '</span>'; }
           else if(isLive) {
             elPub.innerHTML = (m.timerActivo ? '<span class="blink">🔴</span> ' : '⏸️ ') + text + ' <span style="margin-left:4px; font-variant-numeric:tabular-nums;">' + timeString + '</span>' + inicioInfo;
           }
@@ -1119,10 +1128,14 @@
          estadoTxt = `✅ *RESULTADO FINAL*${finInfo} ✅`; 
       } 
       else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
-         let mins = Math.floor((m.tiempoAcumulado || 0) / 60);
-         if (m.timerActivo) { mins = Math.floor(((m.tiempoAcumulado || 0) + Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000)) / 60); }
-         let secs = (m.tiempoAcumulado || 0) % 60;
-         if (m.timerActivo) { secs = Math.floor(((m.tiempoAcumulado || 0) + Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000))) % 60; }
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { 
+            let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+            if (m.estadoPeriodo === 'Descanso') { totalSecs = Math.max(0, totalSecs - diff); }
+            else { totalSecs += diff; }
+         }
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
          
          let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ` (Min ${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')})` : '';
          let inicioWA = m.horaReal ? ` (Inició a las ${m.horaReal})` : '';
