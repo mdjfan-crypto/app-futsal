@@ -202,7 +202,7 @@
             "⚠️ 5 Faltas acumuladas"
          ]
       },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -214,7 +214,7 @@
         mensajeAnimo: "¡Vamos chicas! 💛",
         mensajesRapidos: datosIniciales.config.mensajesRapidos
       };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "" }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "", oculto: false }];
     }
 
     window.formatearFecha = function(fechaOriginal) {
@@ -274,6 +274,7 @@
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
            if(!p.pinMarcador) p.pinMarcador = "";
+           if(p.oculto === undefined) p.oculto = false; // Inicializar oculto por seguridad
         });
 
         const matchIdParam = urlParams.get('match');
@@ -331,13 +332,14 @@
       }
     };
 
-    // Función para añadir eventos al acta
-    window.agregarEventoRegistro = function(index, texto) {
+    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO CON HORA EXACTA (Solo si se pide explícitamente)
+    window.agregarEventoRegistro = function(index, texto, guardarHoraLocal = false) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
       
       let minTxt = "00:00";
       let periodoActual = m.estadoPeriodo || "Previo"; 
+      let horaActual = guardarHoraLocal ? new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : null;
 
       if (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') {
          let totalSecs = m.tiempoAcumulado || 0;
@@ -354,7 +356,7 @@
       }
       
       let newId = Date.now() + Math.floor(Math.random()*1000);
-      m.eventos.unshift({ id: newId, texto: texto, min: minTxt, periodo: periodoActual });
+      m.eventos.unshift({ id: newId, texto: texto, min: minTxt, periodo: periodoActual, hora: horaActual });
       return newId;
     };
 
@@ -388,10 +390,10 @@
       
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
-      // Si el tiempo es "-" no ponemos "Min -"
-      let tiempoWa = ev.min === "-" ? "" : `Min ${ev.min}`;
+      let tiempoWa = (ev.min === "Descanso" || ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
+      let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
 
-      let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n⏱️ ${ev.periodo} ${tiempoWa ? '- ' + tiempoWa : ''}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
+      let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n📌 ${ev.periodo} ${tiempoWa} ${horaWa}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
@@ -410,7 +412,7 @@
          if (!m.horaReal) m.horaReal = horaLocal;
          m.timerActivo = true;
          m.timerInicio = Date.now();
-         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte (Hora: ${horaLocal})`);
+         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
@@ -421,12 +423,12 @@
              m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
          }
          
-         // NUEVO: Redondear al minuto más cercano y forzar segundos a 00
+         // Redondear al minuto más cercano y forzar segundos a 00
          m.tiempoAcumulado = Math.round((m.tiempoAcumulado || 0) / 60) * 60;
          let totalSecs = m.tiempoAcumulado;
          let duracion = `${Math.floor(totalSecs / 60).toString().padStart(2, '0')}:00`;
          
-         let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración: ${duracion} | Hora: ${horaLocal}`);
+         let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración: ${duracion}`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
@@ -441,7 +443,7 @@
          }
          m.timerActivo = true;
          m.timerInicio = Date.now();
-         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte (Hora: ${horaLocal})`);
+         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
@@ -452,14 +454,14 @@
              m.tiempoAcumulado = (m.tiempoAcumulado || 0) + Math.floor((Date.now() - m.timerInicio) / 1000);
          }
          
-         // NUEVO: Redondear al minuto más cercano y forzar segundos a 00
+         // Redondear al minuto más cercano y forzar segundos a 00
          m.tiempoAcumulado = Math.round((m.tiempoAcumulado || 0) / 60) * 60;
          let totalSecs = m.tiempoAcumulado;
          let duracion = `${Math.floor(totalSecs / 60).toString().padStart(2, '0')}:00`;
 
          if (!m.horaFinReal) m.horaFinReal = horaLocal;
          
-         let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion} | Hora: ${m.horaFinReal}`);
+         let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
          guardarDatos();
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
@@ -576,7 +578,7 @@
       
       if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
          m.estadoPeriodo = '1ª Parte';
-         window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`); 
+         window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true); 
       }
 
       if (m.timerActivo) {
@@ -614,7 +616,7 @@
 
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "" });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false });
       guardarDatos();
     };
 
@@ -716,6 +718,9 @@
       for (let i = 0; i < appData.partidos.length; i++) {
          let m = appData.partidos[i];
          if ((m.fase || "1ª Fase") === window.currentFase) {
+            // Ignorar partidos ocultos para usuarios normales en la detección de próximo
+            if (!window.modoEdicion && window.modoMarcador !== i && m.oculto) continue; 
+            
             let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
             if (!isFinalizado) {
                indiceProximo = i;
@@ -736,6 +741,9 @@
             let matchFase = m.fase || "1ª Fase";
             if (matchFase !== window.currentFase) return; 
             
+            // OCULTAR AL PÚBLICO
+            if (!window.modoEdicion && m.oculto) return;
+            
             let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
             let isProximo = (index === indiceProximo);
 
@@ -753,8 +761,15 @@
         card.className = `card ${isLocal ? 'local' : 'visitante'}`;
         card.id = `tarjeta-${index}`; 
         
+        // EFECTO VISUAL SI ESTÁ OCULTO (Para el Administrador)
+        if (window.modoEdicion && m.oculto) {
+            card.style.opacity = '0.85';
+            card.style.border = '2px dashed #9ca3af';
+            card.style.borderLeft = '5px solid #9ca3af';
+        }
+        
         let nextBannerHTML = '';
-        if (index === indiceProximo && !window.modoEdicion && window.modoMarcador === null) {
+        if (index === indiceProximo && !window.modoEdicion && window.modoMarcador === null && !m.oculto) {
             nextBannerHTML = `<div class="next-match-banner">⭐ Próximo Partido ⭐</div>`;
             card.style.borderLeftColor = '#10b981'; 
             card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
@@ -813,10 +828,11 @@
             </div>
             <div class="log-list">
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
+                let horaHtml = ev.hora ? ` | ⌚ ${ev.hora}` : '';
                 return `
                 <div class="log-item">
                    <div style="flex:1; line-height:1.4;">
-                     <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo}${ev.min !== '-' ? '| ' + ev.min : ''}]</span><br>
+                     <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo} ${ev.min !== '-' ? '\vert{} ⏱️ ' + ev.min : ''}${horaHtml}]</span><br>
                      <span style="font-weight:600; color:var(--text);">${ev.texto}</span>
                    </div>
                    ${isEditable ? `
@@ -860,12 +876,13 @@
         if (window.modoEdicion) {
           cuerpoHTML = `
             <div class="card-header">
-              <div style="display:flex; gap:5px;">
+              <div style="display:flex; gap:5px; align-items:center;">
                 <input type="text" class="jornada-edit" value="${m.jornada}" onchange="window.actualizarDato(${index}, 'jornada', this.value)" style="width: 120px;">
+                <button onclick="window.actualizarDato(${index}, 'oculto', ${!m.oculto})" style="background:${m.oculto ? '#fee2e2' : '#e0f2fe'}; color:${m.oculto ? '#991b1b' : '#0369a1'}; border:1px solid ${m.oculto ? '#fca5a5' : '#7dd3fc'}; border-radius:4px; padding:2px 6px; font-size:0.75rem; font-weight:bold; cursor:pointer;" title="${m.oculto ? 'El partido está oculto al público. Pulsa para hacerlo visible.' : 'El partido es visible. Pulsa para ocultarlo.'}">${m.oculto ? '🙈 Oculto' : '👁️ Visible'}</button>
               </div>
               <div>
-                <button class="btn-delete-item" style="background:#fef3c7; color:#92400e; margin-right:4px;" onclick="window.resetearPartido(${index})" title="Opciones de Reseteo">🔄 Opciones</button>
-                <button class="btn-delete-item" onclick="window.borrarPartido(${index})" title="Borrar partido">🗑️ Borrar</button>
+                <button class="btn-delete-item" style="background:#fef3c7; color:#92400e; margin-right:4px;" onclick="window.resetearPartido(${index})" title="Opciones de Reseteo">🔄</button>
+                <button class="btn-delete-item" onclick="window.borrarPartido(${index})" title="Borrar partido">🗑️</button>
               </div>
             </div>
             
