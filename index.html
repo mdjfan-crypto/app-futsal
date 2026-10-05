@@ -165,6 +165,32 @@
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
+    // VARIABLE PARA EL WAKE LOCK (MANTENER PANTALLA ENCENDIDA)
+    let wakeLock = null;
+
+    async function solicitarWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.error("No se pudo bloquear la pantalla:", err);
+        }
+      }
+    }
+
+    function liberarWakeLock() {
+      if (wakeLock !== null) {
+        wakeLock.release().then(() => { wakeLock = null; });
+      }
+    }
+
+    // SI MINIMIZAMOS Y VOLVEMOS, RE-SOLICITAR LA PANTALLA ACTIVA
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        solicitarWakeLock();
+      }
+    });
+
     // LÓGICA DE PRESENCIA (USUARIOS ONLINE)
     const connectedRef = ref(db, '.info/connected');
     const myConnId = Date.now() + '_' + Math.floor(Math.random()*1000);
@@ -233,6 +259,7 @@
         if (pass === CLAVE_SECRETA) { 
            window.modoEdicion = true; 
            window.modoMarcador = null;
+           solicitarWakeLock(); // ACTIVA PANTALLA SIEMPRE ENCENDIDA
            renderApp(); 
         } else if (pass !== null && pass.trim() !== "") {
            let pinBuscado = pass.trim();
@@ -242,6 +269,7 @@
               window.modoMarcador = indexDelegado;
               window.modoEdicion = false;
               window.currentFase = appData.partidos[indexDelegado].fase || "1ª Fase";
+              solicitarWakeLock(); // ACTIVA PANTALLA SIEMPRE ENCENDIDA
               renderApp();
            } else {
               alert("Contraseña o PIN incorrecto.");
@@ -250,6 +278,7 @@
       } else {
         window.modoEdicion = false;
         window.modoMarcador = null;
+        liberarWakeLock(); // PERMITE APAGAR PANTALLA
         renderApp();
       }
     };
@@ -335,7 +364,7 @@
       }
     };
 
-    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO
+    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO CON HORA EXACTA (Solo si se pide explícitamente)
     window.agregarEventoRegistro = function(index, texto, guardarHoraLocal = false) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -350,11 +379,20 @@
          let mins = Math.floor(totalSecs / 60);
          let secs = totalSecs % 60;
          minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      } else if (m.estadoPeriodo === 'Descanso') {
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { totalSecs = Math.max(0, totalSecs - Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000)); }
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
+         minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      } else if (m.estadoPeriodo === 'Final') {
+         minTxt = "Final";
+      } else {
+         minTxt = "-";
       }
       
       let newId = Date.now() + Math.floor(Math.random()*1000);
       
-      // Sanitizar el string del periodo para que nunca tenga cosas raras en caso de bugs antiguos
       let periodoLimpio = periodoActual;
       if (periodoLimpio.includes('1ª Parte')) periodoLimpio = '1ª Parte';
       else if (periodoLimpio.includes('2ª Parte')) periodoLimpio = '2ª Parte';
@@ -372,10 +410,51 @@
       }
     };
 
+    // NUEVA LÓGICA DE MENSAJE MANUAL PERSONALIZABLE
     window.agregarEventoManual = function(index) {
       let txt = prompt("📝 Escribe un mensaje para el directo:");
       if(txt && txt.trim() !== "") {
-         window.agregarEventoRegistro(index, "🎙️ " + txt.trim());
+         let modoOpcion = prompt("⏱️ ¿Qué tiempo quieres mostrar junto al mensaje?\n\n1. Solo Cronómetro (Ej: 14:32)\n2. Solo Hora Local (Ej: 18:45)\n3. Ambas (Cronómetro y Hora)\n4. Ninguna (Solo la parte)\n\nEscribe 1, 2, 3 o 4:", "1");
+         
+         let m = appData.partidos[index];
+         if (!m.eventos) m.eventos = [];
+         
+         let minTxt = "-";
+         let horaActual = null;
+         let periodoActual = m.estadoPeriodo || "Previo";
+
+         // Calcular cronometro actual si corresponde
+         if (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte' || m.estadoPeriodo === 'Descanso') {
+             let totalSecs = m.tiempoAcumulado || 0;
+             if (m.timerActivo) { 
+                 let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+                 if (m.estadoPeriodo === 'Descanso') { totalSecs = Math.max(0, totalSecs - diff); }
+                 else { totalSecs += diff; }
+             }
+             let mins = Math.floor(totalSecs / 60);
+             let secs = totalSecs % 60;
+             let cronoStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+             
+             if(modoOpcion === "1" || modoOpcion === "3" || !modoOpcion) minTxt = cronoStr;
+         }
+         
+         if (modoOpcion === "2" || modoOpcion === "3") {
+             horaActual = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+         }
+         
+         if (modoOpcion === "4") {
+             minTxt = "-";
+             horaActual = null;
+         }
+
+         let newId = Date.now() + Math.floor(Math.random()*1000);
+         let periodoLimpio = periodoActual;
+         if (periodoLimpio.includes('1ª Parte')) periodoLimpio = '1ª Parte';
+         else if (periodoLimpio.includes('2ª Parte')) periodoLimpio = '2ª Parte';
+         else if (periodoLimpio.includes('Descanso')) periodoLimpio = 'Descanso';
+         else if (periodoLimpio.includes('Final')) periodoLimpio = 'Final';
+
+         m.eventos.unshift({ id: newId, texto: "🎙️ " + txt.trim(), min: minTxt, periodo: periodoLimpio, hora: horaActual });
          guardarDatos();
       }
     };
@@ -388,7 +467,6 @@
       selectElement.value = ""; 
     };
 
-    // FORMATEADOR DE WHATSAPP (SÚPER LIMPIO)
     window.compartirFlashWA = function(index, evId) {
       const m = appData.partidos[index];
       const ev = m.eventos.find(e => e.id == evId);
@@ -396,10 +474,10 @@
       
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
-      let tiempoWa = (ev.min !== "-") ? ` | ⏱️ ${ev.min}` : "";
-      let horaWa = ev.hora ? ` | ⌚ ${ev.hora}` : "";
-      
-      let lineaTiempo = `📌 ${ev.periodo}${tiempoWa}${horaWa}`;
+      let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
+      let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
+
+      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa} ${horaWa}`.trim();
 
       let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n${lineaTiempo}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
       
@@ -414,6 +492,7 @@
       let defaultMins = parseInt(m.duracionParte) || 25;
       let defaultDescanso = parseInt(m.duracionDescanso) || 10;
       
+      // Calcular tiempo exacto actual para verificaciones de finalización temprana
       let elapsed = m.tiempoAcumulado || 0;
       if (m.timerActivo) { 
          let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
@@ -456,19 +535,21 @@
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
-         let modoCero = confirm("⏱️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
+         let modoCero = confirm("⏱️️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
          
          m.estadoPeriodo = "2ª Parte";
          m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
          m.timerActivo = true;
          m.timerInicio = Date.now();
 
+         // COMPROBAR Y REGISTRAR LA DURACIÓN DEL DESCANSO EN EL ACTA WEB
          if (m.timerDescansoInicio) {
              let elapsedDescanso = Math.floor((Date.now() - m.timerDescansoInicio) / 1000);
              let minsD = Math.floor(elapsedDescanso / 60);
              let secsD = elapsedDescanso % 60;
              let duracionDescansoStr = `${minsD.toString().padStart(2, '0')}:${secsD.toString().padStart(2, '0')}`;
              
+             // Registramos el evento pero SIN lanzar WhatsApp
              window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración real: ${duracionDescansoStr}`, false);
              m.timerDescansoInicio = null;
          }
@@ -521,6 +602,7 @@
        guardarDatos();
     };
 
+    // GESTIÓN DE PESTAÑAS Y LOGO
     window.procesarLogo = function(event) { 
       const file = event.target.files[0];
       if (!file) return;
@@ -590,6 +672,7 @@
       }
     };
 
+    // FUNCIONES DEL DIRECTO Y GOLES
     window.sumarGol = function(index, equipo) {
       let m = appData.partidos[index];
       let nombre = prompt("⚽ ¿Quién ha marcado? (Déjalo en blanco si no lo sabes)");
@@ -682,6 +765,7 @@
       let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
       let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
 
+      // GENERAR OPCIONES DE MENSAJES RÁPIDOS
       let opcionesRapidasHTML = `<option value="">⚡ Rápido...</option>`;
       if (appData.config.mensajesRapidos) {
          appData.config.mensajesRapidos.forEach(msg => {
@@ -690,6 +774,7 @@
          });
       }
 
+      // RENDER CABECERA SEGÚN MODO
       if (window.modoEdicion) {
         header.innerHTML = `
           <div id="onlineBadge">👁️ Cargando...</div>
@@ -723,6 +808,7 @@
         `;
       }
 
+      // RENDER PESTAÑAS
       const tabsMenu = document.getElementById('tabsMenu');
       if (window.modoMarcador === null) {
           let tabsHTML = `<div class="tabs-wrapper">`;
@@ -742,6 +828,7 @@
           tabsMenu.innerHTML = '';
       }
 
+      // RENDER FILTROS
       const filterMenu = document.getElementById('filterMenu');
       if (!window.modoEdicion && window.modoMarcador === null) {
         filterMenu.innerHTML = `
@@ -772,6 +859,7 @@
       let partidosMostrados = 0;
 
       appData.partidos.forEach((m, index) => {
+        // FILTROS DE VISUALIZACIÓN
         if (window.modoMarcador !== null) {
             if (index !== window.modoMarcador) return; 
         } else {
