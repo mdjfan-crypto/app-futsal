@@ -166,6 +166,14 @@
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
+    // --- FUNCIÓN DE BLINDAJE PARA ARREGLAR ARRAYS ROTOS POR FIREBASE ---
+    const forceArray = (data) => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data.filter(e => e !== null && e !== undefined);
+        if (typeof data === 'object') return Object.values(data).filter(e => e !== null && e !== undefined);
+        return [data];
+    };
+
     // VARIABLE PARA EL WAKE LOCK (MANTENER PANTALLA ENCENDIDA)
     let wakeLock = null;
 
@@ -287,28 +295,19 @@
       if (data) {
         appData = data;
         
-        // --- BLINDAJE EXTREMO ANTI-FIREBASE (ARRAY TO OBJECT FIX) ---
+        // --- APLICACIÓN DEL SÚPER ESCUDO A TODA LA BASE DE DATOS ---
         if (!appData.config) appData.config = { ...datosIniciales.config }; 
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
-        
-        if (appData.config.mensajesRapidos) {
-            let msgs = Array.isArray(appData.config.mensajesRapidos) ? appData.config.mensajesRapidos : Object.values(appData.config.mensajesRapidos);
-            appData.config.mensajesRapidos = msgs.filter(m => m != null);
-        } else {
-            appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
-        }
-        
         if (!appData.config.telegramToken) appData.config.telegramToken = "";
         if (!appData.config.telegramChatId) appData.config.telegramChatId = "";
-
-        if (appData.partidos) {
-            let parts = Array.isArray(appData.partidos) ? appData.partidos : Object.values(appData.partidos);
-            appData.partidos = parts.filter(p => p != null);
-        } else {
-            appData.partidos = [];
-        }
         
-        if (!appData.config.fases) {
+        appData.config.mensajesRapidos = forceArray(appData.config.mensajesRapidos);
+        if (appData.config.mensajesRapidos.length === 0) appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
+
+        appData.partidos = forceArray(appData.partidos);
+        
+        appData.config.fases = forceArray(appData.config.fases);
+        if (appData.config.fases.length === 0) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
            appData.config.fases = computedFases.length > 0 ? computedFases : ["1ª Fase"];
         }
@@ -317,12 +316,7 @@
            if(!p.id) p.id = Date.now() + idx; 
            if(!p.fase) p.fase = "1ª Fase"; 
            
-           if (p.eventos) {
-               let evs = Array.isArray(p.eventos) ? p.eventos : Object.values(p.eventos);
-               p.eventos = evs.filter(e => e != null);
-           } else {
-               p.eventos = [];
-           }
+           p.eventos = forceArray(p.eventos);
            
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
@@ -344,7 +338,7 @@
            }
            window.initialLoadDone = true; 
         } else if (!window.currentFase || !appData.config.fases.includes(window.currentFase)) {
-           window.currentFase = appData.config.fases[0];
+           window.currentFase = appData.config.fases[0] || "1ª Fase";
         }
         
         renderApp();
@@ -395,6 +389,8 @@
       if (!token || !chatId) return; 
 
       const m = appData.partidos[index];
+      if (!m) return;
+      
       const ev = m.eventos.find(e => e.id == evId);
       if(!ev) return;
       
@@ -412,6 +408,8 @@
 
     window.enviarResumenTelegram = function(index) {
       const m = appData.partidos[index];
+      if (!m) return;
+      
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : `¡Vamos ${eq}! 💛`;
       const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
@@ -503,8 +501,8 @@
                      let evId = window.agregarEventoRegistro(index, textWA, false);
                      guardarDatos();
                      
-                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
-                     setTimeout(() => window.compartirFlashWA(index, evId), 400); // WHATSAPP MANUAL
+                     window.enviarFlashTelegram(index, evId); 
+                     setTimeout(() => window.compartirFlashWA(index, evId), 400); 
                  }
              }, 100);
          }
@@ -630,7 +628,7 @@
          m.eventos.unshift({ id: newId, texto: "🎙️ " + txt.trim(), min: minTxt, periodo: periodoLimpio, hora: horaActual });
          guardarDatos();
          
-         window.enviarFlashTelegram(index, newId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, newId);
       }
     };
 
@@ -641,7 +639,7 @@
       guardarDatos();
       selectElement.value = ""; 
       
-      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+      window.enviarFlashTelegram(index, evId);
     };
 
     window.compartirFlashWA = function(index, evId) {
@@ -685,7 +683,7 @@
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
@@ -709,7 +707,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración de juego: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
@@ -733,7 +731,7 @@
 
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "Final") {
@@ -757,7 +755,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
     };
@@ -870,7 +868,7 @@
         evId = window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante || 'Visitante'}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
       guardarDatos();
-      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+      window.enviarFlashTelegram(index, evId);
     };
 
     window.toggleTimer = function(index) {
