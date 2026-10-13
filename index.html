@@ -166,11 +166,21 @@
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
-    // --- FUNCIÓN SÚPER ESCUDO: CURA CUALQUIER LISTA ROTA POR FIREBASE ---
+    // --- FUNCIÓN SÚPER ESCUDO (SIN CÓDIGO MODERNO) ---
     window.safeArray = function(data) {
         if (!data) return [];
-        if (Array.isArray(data)) return data.filter(item => item !== null && item !== undefined);
-        if (typeof data === 'object') return Object.values(data).filter(item => item !== null && item !== undefined);
+        if (Array.isArray(data)) {
+            return data.filter(function(item) { return item !== null && item !== undefined; });
+        }
+        if (typeof data === 'object') {
+            var arr = [];
+            for (var key in data) {
+                if (data.hasOwnProperty(key) && data[key] !== null && data[key] !== undefined) {
+                    arr.push(data[key]);
+                }
+            }
+            return arr;
+        }
         return [data];
     };
 
@@ -294,13 +304,11 @@
       if (data) {
         appData = data;
         
-        // --- LIMPIEZA ABSOLUTA DE BASE DE DATOS USANDO SÚPER ESCUDO ---
         if (!appData.config) appData.config = { ...datosIniciales.config }; 
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
         if (!appData.config.telegramToken) appData.config.telegramToken = "";
         if (!appData.config.telegramChatId) appData.config.telegramChatId = "";
         
-        // Blindar listas maestras
         appData.config.mensajesRapidos = window.safeArray(appData.config.mensajesRapidos);
         if (appData.config.mensajesRapidos.length === 0) appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
 
@@ -317,7 +325,6 @@
            if(!p.id) p.id = Date.now() + idx; 
            if(!p.fase) p.fase = "1ª Fase"; 
            
-           // Blindar eventos de cada partido
            p.eventos = window.safeArray(p.eventos);
            
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
@@ -369,8 +376,9 @@
 
     // --- MOTOR DE ENVÍO SILENCIOSO A TELEGRAM ---
     window.enviarTelegramRaw = function(texto) {
-        const token = appData.config?.telegramToken;
-        const chatId = appData.config?.telegramChatId;
+        if (!appData || !appData.config) return;
+        const token = appData.config.telegramToken;
+        const chatId = appData.config.telegramChatId;
         if (!token || !chatId) return;
 
         const url = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -386,8 +394,9 @@
     };
 
     window.enviarFlashTelegram = function(index, evId) {
-      const token = appData.config?.telegramToken;
-      const chatId = appData.config?.telegramChatId;
+      if (!appData || !appData.config) return;
+      const token = appData.config.telegramToken;
+      const chatId = appData.config.telegramChatId;
       if (!token || !chatId) return; 
 
       const m = appData.partidos[index];
