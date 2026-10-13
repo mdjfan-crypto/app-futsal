@@ -70,8 +70,9 @@
     .score-display { display: flex; gap: 8px; font-size: 1.2rem; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; }
     .score-inputs { display: flex; align-items: center; gap: 4px; }
     .score-inputs input { width: 36px; height: 34px; text-align: center; font-weight: bold; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 6px; }
-    .btn-goal { background: var(--primary); color: var(--dark); border: none; font-weight: 900; font-size: 1rem; border-radius: 6px; padding: 0 10px; height: 34px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    .btn-goal { background: var(--primary); color: var(--dark); border: none; font-weight: 900; font-size: 1rem; border-radius: 6px; padding: 0 8px; height: 34px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
     .btn-goal:active { transform: scale(0.95); }
+    .btn-goal-sub { background: #e5e7eb; color: #374151; border: none; font-weight: bold; font-size: 0.9rem; border-radius: 6px; padding: 0 6px; height: 34px; cursor: pointer; }
     
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.85rem; }
     .info-full { grid-column: span 2; }
@@ -633,6 +634,28 @@
       guardarDatos();
     };
 
+    // --- NUEVA FUNCIÓN: EDITAR UN EVENTO YA ESCRITO EN EL ACTA ---
+    window.editarEvento = function(index, evId) {
+      let m = appData.partidos[index];
+      if (!m || !m.eventos) return;
+      
+      let ev = null;
+      for(let i=0; i<m.eventos.length; i++){
+          if(m.eventos[i].id == evId){ ev = m.eventos[i]; break; }
+      }
+      if(!ev) return;
+
+      if (m.estadoPeriodo === 'Final') {
+          if (!confirm("⚠️ ATENCIÓN: Este partido ya ha finalizado. ¿Estás seguro de que quieres modificar este apunte del acta?")) return;
+      }
+
+      let textoModificado = prompt("✏️ Modifica el texto de este evento:", ev.texto);
+      if (textoModificado !== null && textoModificado.trim() !== "") {
+          ev.texto = textoModificado.trim();
+          guardarDatos();
+      }
+    };
+
     window.agregarEventoManual = function(index) {
       let txt = prompt("📝 Escribe un mensaje para el directo:");
       if(txt && txt.trim() !== "") {
@@ -808,8 +831,7 @@
       }
     };
 
-    // --- MEJORA: BARRERA DE SEGURIDAD PARA PARTIDOS FINALIZADOS ---
-    window.resetearPartido = function(index) {
+    window.resetCrono = function(index) {
       let m = appData.partidos[index];
       if (m.estadoPeriodo === 'Final') {
           if (!confirm("⚠️ ¡ADVERTENCIA! Este partido ya figura como FINALIZADO.\n\n¿Estás completamente seguro de que quieres modificarlo o resetearlo?")) return;
@@ -839,17 +861,6 @@
            alert("✅ Partido reseteado por completo.");
         }
       }
-    };
-
-    window.borrarPartido = function(index) { 
-      let m = appData.partidos[index];
-      if (m.estadoPeriodo === 'Final') {
-          if (!confirm("⚠️ ¡PELIGRO! Este partido ya ha FINALIZADO.\n\n¿Estás totalmente seguro de que quieres BORRARLO por completo?")) return;
-      } else {
-          if (!confirm("¿Borrar partido?")) return;
-      }
-      appData.partidos.splice(index, 1); 
-      guardarDatos(); 
     };
 
     window.procesarLogo = function(event) { 
@@ -932,6 +943,28 @@
       }
     };
 
+    // --- NUEVA FUNCIÓN: RESTAR GOL (-1) ---
+    window.restarGol = function(index, equipo) {
+      let m = appData.partidos[index];
+      if (m.estadoPeriodo === 'Final') {
+          if (!confirm("⚠️ Este partido ha finalizado. ¿Quieres restar un gol de todos modos?")) return;
+      }
+
+      if (equipo === 'L') {
+        let actual = parseInt(m.golesL) || 0;
+        if (actual > 0) {
+            m.golesL = actual - 1;
+            guardarDatos();
+        }
+      } else {
+        let actual = parseInt(m.golesV) || 0;
+        if (actual > 0) {
+            m.golesV = actual - 1;
+            guardarDatos();
+        }
+      }
+    };
+
     window.sumarGol = function(index, equipo) {
       let m = appData.partidos[index];
       if (m.estadoPeriodo === 'Final') {
@@ -1000,6 +1033,17 @@
       guardarDatos();
     };
 
+    window.borrarPartido = function(index) { 
+      let m = appData.partidos[index];
+      if (m.estadoPeriodo === 'Final') {
+          if (!confirm("⚠️ ¡PELIGRO! Este partido ya ha FINALIZADO.\n\n¿Estás totalmente seguro de que quieres BORRARLO por completo?")) return;
+      } else {
+          if (!confirm("¿Borrar partido?")) return;
+      }
+      appData.partidos.splice(index, 1); 
+      guardarDatos(); 
+    };
+
     window.generarNuevoEnlace = function() {
       let nombre = prompt("NUEVO EQUIPO/AÑO.\nEscribe palabra sin espacios (ej: cadete27):");
       if (nombre) {
@@ -1009,7 +1053,7 @@
     };
 
     window.instruccionesDelegado = function() {
-      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 para anotar y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) o escribe mensajes a mano (✍️).\n\n4. ERRORES: Usa el botón '🔄 Opciones' arriba a la derecha para borrar goles por error, reiniciar el tiempo o resetear todo el partido.");
+      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1 para anotar o corregir goles y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.\n\n4. ERRORES: Los partidos finalizados están protegidos; si necesitas modificarlos, te pedirá confirmación.");
     };
 
     function renderApp() {
@@ -1060,7 +1104,7 @@
           if (appData.config && appData.config.fases) {
              appData.config.fases.forEach(f => {
                 let actClass = (f === window.currentFase) ? 'active' : '';
-                tabsHTML += '<button class="tab-btn ' + actClass + '" onclick="window.cambiarFase(\'' + f + '\')">' + f + '</button>';
+                tabsHTML += '<button class="tab-btn ' + actClass + '" onclick="window.cambiarFase(\'' + f + \')">' + f + '</button>';
              });
           }
           if (window.modoEdicion) {
@@ -1117,7 +1161,6 @@
                 if (matchFase !== window.currentFase) return; 
                 if (!window.modoEdicion && m.oculto) return;
                 
-                // MEJORA: Ocultar automáticamente partidos finalizados al público general
                 if (!window.modoEdicion && isFinalizado && window.filtroVista === 'proximo') return;
                 
                 let isProximo = (index === indiceProximo);
@@ -1208,6 +1251,7 @@
                     let btnWaBorrar = '';
                     if (isEditable) {
                         btnWaBorrar = '<div style="display:flex; gap:4px; align-items:center;">' +
+                          '<button onclick="window.editarEvento(' + index + ', \'' + ev.id + '\')" style="background:#fef3c7; color:#b45309; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Editar apunte">✏️</button>' +
                           '<button onclick="window.compartirFlashWA(' + index + ', \'' + ev.id + '\')" style="background:#25d366; color:white; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Aviso Rápido a WhatsApp">💬 WA</button>' +
                           '<button onclick="window.borrarEvento(' + index + ', \'' + ev.id + '\')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; cursor:pointer;" title="Borrar evento">✖</button>' +
                         '</div>';
@@ -1282,11 +1326,13 @@
               '<div class="vs-container" style="flex-direction: column; gap:10px;">' +
                 '<input type="text" class="team-input" value="' + (m.local || '') + '" onchange="window.actualizarDato(' + index + ', \'local\', this.value)">' +
                 '<div class="score-inputs">' +
+                  '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'L\')" title="Restar gol (-1)">-1</button>' +
                   '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'L\')">+1</button>' +
                   '<input type="number" min="0" value="' + valGolesL + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)">' +
                   '<span>VS</span>' +
                   '<input type="number" min="0" value="' + valGolesV + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)">' +
                   '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'V\')">+1</button>' +
+                  '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'V\')" title="Restar gol (-1)">-1</button>' +
                 '</div>' +
                 '<input type="text" class="team-input" value="' + (m.visitante || '') + '" onchange="window.actualizarDato(' + index + ', \'visitante\', this.value)">' +
                 '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
@@ -1333,16 +1379,18 @@
                 '<div class="vs-container" style="flex-direction: column; gap:10px;">' +
                   '<div style="font-weight:bold; font-size:1.1rem;">' + (m.local || '') + '</div>' +
                   '<div class="score-inputs">' +
+                    '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'L\')" title="Restar gol (-1)">-1</button>' +
                     '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'L\')">+1</button>' +
                     '<input type="number" min="0" value="' + valGolesL + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)">' +
                     '<span>VS</span>' +
                     '<input type="number" min="0" value="' + valGolesV + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)">' +
                     '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'V\')">+1</button>' +
+                    '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'V\')" title="Restar gol (-1)">-1</button>' +
                   '</div>' +
                   '<div style="font-weight:bold; font-size:1.1rem;">' + (m.visitante || '') + '</div>' +
                   '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
-                    '<input type="text" placeholder="Goleadores Local" value="' + (m.golesL || '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
-                    '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV || '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Local" value="' + (m.golesL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                   '</div>' +
                 '</div>' + panelDirectoHTML + eventosHTML;
             } else {
