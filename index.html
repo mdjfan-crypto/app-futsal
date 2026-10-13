@@ -138,7 +138,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, set, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 🔴 CLAVES FIREBASE INTEGRADAS 🔴
     const firebaseConfig = {
       apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
       authDomain: "app-futsal-da9ce.firebaseapp.com",
@@ -166,7 +165,7 @@
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
-    // VARIABLE PARA EL WAKE LOCK (MANTENER PANTALLA ENCENDIDA)
+    // WAKE LOCK (MANTENER PANTALLA ENCENDIDA)
     let wakeLock = null;
 
     async function solicitarWakeLock() {
@@ -184,7 +183,7 @@
       if (wakeLock !== null && document.visibilityState === 'visible') { solicitarWakeLock(); }
     });
 
-    // LÓGICA DE PRESENCIA (USUARIOS ONLINE)
+    // PRESENCIA (USUARIOS ONLINE)
     const connectedRef = ref(db, '.info/connected');
     const myConnId = Date.now() + '_' + Math.floor(Math.random()*1000);
     const myConnectionsRef = ref(db, `online_${idEquipoActual}/${myConnId}`);
@@ -248,7 +247,6 @@
       return fechaOriginal;
     };
 
-    // LÓGICA DE INICIO DE SESIÓN
     window.toggleEdicion = function() {
       if (!window.modoEdicion && window.modoMarcador === null) {
         let pass = prompt("Contraseña de administrador o PIN de delegado:");
@@ -287,24 +285,26 @@
       if (data) {
         appData = data;
         
-        // --- BLINDAJE ANTI-FIREBASE (ARRAY TO OBJECT FIX) ---
-        if (appData.partidos) {
-            appData.partidos = Array.isArray(appData.partidos) ? appData.partidos : Object.values(appData.partidos).filter(Boolean);
-        } else {
-            appData.partidos = [];
-        }
-        
+        // --- BLINDAJE EXTREMO ANTI-FIREBASE (ARRAY TO OBJECT FIX) ---
         if (!appData.config) appData.config = { ...datosIniciales.config }; 
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
         
         if (appData.config.mensajesRapidos) {
-            appData.config.mensajesRapidos = Array.isArray(appData.config.mensajesRapidos) ? appData.config.mensajesRapidos : Object.values(appData.config.mensajesRapidos).filter(Boolean);
+            let msgs = Array.isArray(appData.config.mensajesRapidos) ? appData.config.mensajesRapidos : Object.values(appData.config.mensajesRapidos);
+            appData.config.mensajesRapidos = msgs.filter(m => m != null);
         } else {
             appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
         }
         
         if (!appData.config.telegramToken) appData.config.telegramToken = "";
         if (!appData.config.telegramChatId) appData.config.telegramChatId = "";
+
+        if (appData.partidos) {
+            let parts = Array.isArray(appData.partidos) ? appData.partidos : Object.values(appData.partidos);
+            appData.partidos = parts.filter(p => p != null);
+        } else {
+            appData.partidos = [];
+        }
         
         if (!appData.config.fases) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
@@ -316,7 +316,8 @@
            if(!p.fase) p.fase = "1ª Fase"; 
            
            if (p.eventos) {
-               p.eventos = Array.isArray(p.eventos) ? p.eventos : Object.values(p.eventos).filter(Boolean);
+               let evs = Array.isArray(p.eventos) ? p.eventos : Object.values(p.eventos);
+               p.eventos = evs.filter(e => e != null);
            } else {
                p.eventos = [];
            }
@@ -327,6 +328,8 @@
            if(p.oculto === undefined) p.oculto = false; 
            if(p.duracionParte === undefined) p.duracionParte = 25;
            if(p.duracionDescanso === undefined) p.duracionDescanso = 10;
+           if(p.golesL === undefined) p.golesL = "";
+           if(p.golesV === undefined) p.golesV = "";
         });
 
         const matchIdParam = urlParams.get('match');
@@ -349,7 +352,6 @@
     function guardarDatos() { set(appRef, appData); }
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
 
-    // --- CONFIGURACIÓN DE TELEGRAM ---
     window.configurarTelegram = function() {
        let token = prompt("Paso 1: Pega el TOKEN de tu bot de Telegram (créalo con @BotFather):", appData.config.telegramToken || "");
        if (token !== null) {
@@ -366,7 +368,6 @@
        }
     };
 
-    // --- MOTOR DE ENVÍO SILENCIOSO A TELEGRAM ---
     window.enviarTelegramRaw = function(texto) {
         const token = appData.config?.telegramToken;
         const chatId = appData.config?.telegramChatId;
@@ -450,7 +451,6 @@
       alert("✅ Resumen enviado a Telegram en segundo plano.");
     };
 
-    // SISTEMA INTELIGENTE DE NOTIFICACIÓN DE CAMBIOS
     window.actualizarDato = function(index, campo, valor) { 
       let m = appData.partidos[index];
       if (!m) return;
@@ -498,15 +498,14 @@
                      let evId = window.agregarEventoRegistro(index, textWA, false);
                      guardarDatos();
                      
-                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
-                     setTimeout(() => window.compartirFlashWA(index, evId), 400); // WHATSAPP MANUAL
+                     window.enviarFlashTelegram(index, evId);
+                     setTimeout(() => window.compartirFlashWA(index, evId), 400);
                  }
              }, 100);
          }
       }
     };
     
-    // GESTIÓN DE MENSAJES RÁPIDOS
     window.editarMensajesRapidos = function() {
       let msgs = (appData.config && appData.config.mensajesRapidos) ? appData.config.mensajesRapidos : [];
       let listaTxt = msgs.map((m, i) => `${i + 1}.${m}`).join("\n");
@@ -540,7 +539,6 @@
       }
     };
 
-    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO CON HORA EXACTA
     window.agregarEventoRegistro = function(index, texto, guardarHoraLocal = false) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -586,7 +584,6 @@
       }
     };
 
-    // LÓGICA DE MENSAJE MANUAL PERSONALIZABLE
     window.agregarEventoManual = function(index) {
       let txt = prompt("📝 Escribe un mensaje para el directo:");
       if(txt && txt.trim() !== "") {
@@ -625,7 +622,7 @@
          m.eventos.unshift({ id: newId, texto: "🎙️ " + txt.trim(), min: minTxt, periodo: periodoLimpio, hora: horaActual });
          guardarDatos();
          
-         window.enviarFlashTelegram(index, newId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, newId);
       }
     };
 
@@ -636,7 +633,7 @@
       guardarDatos();
       selectElement.value = ""; 
       
-      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+      window.enviarFlashTelegram(index, evId);
     };
 
     window.compartirFlashWA = function(index, evId) {
@@ -656,7 +653,6 @@
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
-    // EL DIRECTOR INTELIGENTE DE PARTIDOS
     window.cambiarEstadoPeriodo = function(index, valor) {
       if(valor === "") return;
       let m = appData.partidos[index];
@@ -680,7 +676,7 @@
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
@@ -704,7 +700,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración de juego: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
@@ -728,7 +724,7 @@
 
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "Final") {
@@ -752,7 +748,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+         window.enviarFlashTelegram(index, evId);
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
     };
@@ -865,7 +861,7 @@
         evId = window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante || 'Visitante'}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
       guardarDatos();
-      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+      window.enviarFlashTelegram(index, evId);
     };
 
     window.toggleTimer = function(index) {
@@ -1030,7 +1026,6 @@
 
       if (appData.partidos) {
           appData.partidos.forEach((m, index) => {
-            // FILTROS DE VISUALIZACIÓN
             if (window.modoMarcador !== null) {
                 if (index !== window.modoMarcador) return; 
             } else {
@@ -1125,7 +1120,7 @@
                   ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
                     let minHtml = ev.min !== '-' ? ` | ⏱️ ${ev.min}` : '';
                     let horaHtml = ev.hora ? ` | ⌚ ${ev.hora}` : '';
-                    let textoWeb = String(ev.texto || "").replace(/\*/g, '');
+                    let textoWeb = String(ev.texto || "").replace(/\*/g, ''); 
                     return `
                     <div class="log-item">
                        <div style="flex:1; line-height:1.4;">
