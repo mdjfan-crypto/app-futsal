@@ -634,7 +634,6 @@
       guardarDatos();
     };
 
-    // --- NUEVA FUNCIÓN: EDITAR UN EVENTO YA ESCRITO EN EL ACTA ---
     window.editarEvento = function(index, evId) {
       let m = appData.partidos[index];
       if (!m || !m.eventos) return;
@@ -943,7 +942,6 @@
       }
     };
 
-    // --- NUEVA FUNCIÓN: RESTAR GOL (-1) ---
     window.restarGol = function(index, equipo) {
       let m = appData.partidos[index];
       if (m.estadoPeriodo === 'Final') {
@@ -1104,7 +1102,7 @@
           if (appData.config && appData.config.fases) {
              appData.config.fases.forEach(f => {
                 let actClass = (f === window.currentFase) ? 'active' : '';
-                tabsHTML += '<button class="tab-btn ' + actClass + '" onclick="window.cambiarFase(\'' + f + \')">' + f + '</button>';
+                tabsHTML += '<button class="tab-btn ' + actClass + '" onclick="window.cambiarFase(\'' + f + '\')">' + f + '</button>';
              });
           }
           if (window.modoEdicion) {
