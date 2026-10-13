@@ -328,7 +328,7 @@
     function guardarDatos() { set(appRef, appData); }
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
 
-    // --- NUEVO: CONFIGURACIÓN DE TELEGRAM ---
+    // --- CONFIGURACIÓN DE TELEGRAM ---
     window.configurarTelegram = function() {
        let token = prompt("Paso 1: Pega el TOKEN de tu bot de Telegram (créalo con @BotFather):", appData.config.telegramToken || "");
        if (token !== null) {
@@ -345,7 +345,7 @@
        }
     };
 
-    // --- NUEVO: MOTOR DE ENVÍO SILENCIOSO A TELEGRAM ---
+    // --- MOTOR DE ENVÍO SILENCIOSO A TELEGRAM ---
     window.enviarTelegramRaw = function(texto) {
         const token = appData.config.telegramToken;
         const chatId = appData.config.telegramChatId;
@@ -364,6 +364,10 @@
     };
 
     window.enviarFlashTelegram = function(index, evId) {
+      const token = appData.config.telegramToken;
+      const chatId = appData.config.telegramChatId;
+      if (!token || !chatId) return; // Si no hay Telegram configurado, no hace nada
+
       const m = appData.partidos[index];
       const ev = m.eventos.find(e => e.id == evId);
       if(!ev) return;
@@ -372,10 +376,10 @@
       
       let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
       let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
-      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa} ${horaWa}`.trim();
+      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa}${horaWa}`.trim();
       let textoLimpio = ev.texto.replace(/\*/g, ''); // Quitamos asteriscos para TG
 
-      let textoFlash = `⚡ AVISO FLASH ⚡\n\n${textoLimpio}\n${lineaTiempo}\n\n📊 Marcador: ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 Ir al directo: ${appUrl}`;
+      let textoFlash = `⚡ AVISO FLASH ⚡\n\n${textoLimpio}\n${lineaTiempo}\n\n📊 Marcador: ${m.local}${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 Ir al directo: ${appUrl}`;
       
       window.enviarTelegramRaw(textoFlash);
     };
@@ -472,7 +476,7 @@
                      let evId = window.agregarEventoRegistro(index, textWA, false);
                      guardarDatos();
                      
-                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO (si está configurado)
                      setTimeout(() => window.compartirFlashWA(index, evId), 400); // WHATSAPP MANUAL
                  }
              }, 100);
@@ -483,7 +487,7 @@
     // GESTIÓN DE MENSAJES RÁPIDOS
     window.editarMensajesRapidos = function() {
       let msgs = appData.config.mensajesRapidos || [];
-      let listaTxt = msgs.map((m, i) => `${i + 1}. ${m}`).join("\n");
+      let listaTxt = msgs.map((m, i) => `${i + 1}.${m}`).join("\n");
       
       let accion = prompt("💬 TUS MENSAJES RÁPIDOS ACTUALES:\n\n" + listaTxt + "\n\n¿QUÉ QUIERES HACER?\n- Escribe 'A' para AÑADIR uno nuevo.\n- Escribe su NÚMERO para BORRARLO.\n- Escribe 'R' para RESTAURAR de fábrica.\n- Deja en blanco para CANCELAR.");
       
@@ -623,9 +627,9 @@
       let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
       let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
 
-      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa} ${horaWa}`.trim();
+      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa}${horaWa}`.trim();
 
-      let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n${lineaTiempo}\n\n📊 *Marcador:* ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
+      let textoFlash = `⚡ *AVISO FLASH* ⚡\n\n${ev.texto}\n${lineaTiempo}\n\n📊 *Marcador:* ${m.local}${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 *Ir al directo:* ${appUrl}`;
       
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
@@ -696,7 +700,7 @@
              let duracionDescansoStr = `${minsD.toString().padStart(2, '0')}:${secsD.toString().padStart(2, '0')}`;
              
              let evIdDesc = window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración real: ${duracionDescansoStr}`, false);
-             window.enviarFlashTelegram(index, evIdDesc); // Manda el fin de descanso solo por Telegram
+             window.enviarFlashTelegram(index, evIdDesc); 
              m.timerDescansoInicio = null;
          }
 
@@ -731,23 +735,28 @@
       }
     };
 
-    window.resetCrono = function(index) {
-       let m = appData.partidos[index];
-       let defaultMins = parseInt(m.duracionParte) || 25;
-       let defaultDescanso = parseInt(m.duracionDescanso) || 10;
-       
-       if (m.estadoPeriodo === "2ª Parte") {
-           let modoCero = confirm("¿Poner el cronómetro de esta 2ª Parte a 00:00?\n\n[Aceptar] = 00:00\n[Cancelar] = " + defaultMins + ":00");
-           m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
-       } else if (m.estadoPeriodo === "Descanso") {
-           if(!confirm("¿Volver a poner la cuenta atrás del descanso a " + defaultDescanso + " min?")) return;
-           m.tiempoAcumulado = defaultDescanso * 60;
-       } else {
-           if(!confirm("¿Poner el cronómetro actual a 00:00?")) return;
-           m.tiempoAcumulado = 0;
-       }
-       if (m.timerActivo) { m.timerInicio = Date.now(); }
-       guardarDatos();
+    // EL NUEVO MENÚ DE OPCIONES DE RESETEO
+    window.resetearPartido = function(index) {
+      let m = appData.partidos[index];
+      let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⚽ Borrar solo Goles y Goleadores\n2. ⏱️ Borrar solo el Tiempo y Estado\n3. ⚠️ Resetear TODO el partido a 0\n\nEscribe 1, 2 o 3 y pulsa Aceptar:");
+      
+      if (opcion === "1") {
+        if(confirm("¿Seguro que quieres borrar los goles y goleadores?")) {
+           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+        }
+      } else if (opcion === "2") {
+        if(confirm("¿Seguro que quieres reiniciar el tiempo y el estado del partido a 'Sin empezar'?")) {
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = ""; m.timerDescansoInicio = null;
+        }
+      } else if (opcion === "3") {
+        if(confirm("¿Seguro que quieres borrar a cero TODO (reloj, goles y eventos)?")) {
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
+           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
+           m.eventos = []; 
+           m.timerDescansoInicio = null;
+        }
+      }
+      if(["1","2","3"].includes(opcion)) guardarDatos();
     };
 
     window.procesarLogo = function(event) { 
@@ -889,7 +898,7 @@
     };
 
     window.instruccionesDelegado = function() {
-      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 para anotar y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj se gestiona solo y avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) o escribe mensajes a mano (✍️). ¡Se publican en la web y los puedes mandar a WhatsApp con el botón de '💬 WA'!\n\n4. RESET CRONO: Usa el botón '🔄 00:00' para reiniciar el reloj de la parte actual si te equivocas.");
+      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 para anotar y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) o escribe mensajes a mano (✍️).\n\n4. ERRORES: Usa el botón '🔄 Opciones' arriba a la derecha para borrar goles por error, reiniciar el tiempo o resetear todo el partido.");
     };
 
     function renderApp() {
@@ -988,6 +997,7 @@
       let partidosMostrados = 0;
 
       appData.partidos.forEach((m, index) => {
+        // FILTROS DE VISUALIZACIÓN
         if (window.modoMarcador !== null) {
             if (index !== window.modoMarcador) return; 
         } else {
@@ -1104,11 +1114,11 @@
             <div class="timer-admin-box">
               <div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between; margin-bottom: 6px;">
                  <span>PANEL DE DIRECTO (Estado: ${m.estadoPeriodo || 'Sin empezar'})</span>
-                 <span><input type="time" value="${m.horaReal || ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)" style="width:70px; padding:2px; height:auto; margin:0;" title="Hora Inicio Real"></span>
+                 <span><input type="time" value="${m.horaReal \vert{}\vert{} ''}" onchange="window.actualizarDato(${index}, 'horaReal', this.value)" style="width:70px; padding:2px; height:auto; margin:0;" title="Hora Inicio Real"></span>
               </div>
               <div style="display:flex; justify-content:center; gap:12px; margin-bottom:8px;">
-                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Min/Parte: <input type="number" value="${m.duracionParte || 25}" onchange="window.actualizarDato(${index}, 'duracionParte', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
-                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Descanso: <input type="number" value="${m.duracionDescanso || 10}" onchange="window.actualizarDato(${index}, 'duracionDescanso', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
+                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Min/Parte: <input type="number" value="${m.duracionParte \vert{}\vert{} 25}" onchange="window.actualizarDato(${index}, 'duracionParte', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
+                 <label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Descanso: <input type="number" value="${m.duracionDescanso \vert{}\vert{} 10}" onchange="window.actualizarDato(${index}, 'duracionDescanso', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>
               </div>
               <div class="timer-admin-row">
                 <select onchange="window.cambiarEstadoPeriodo(${index}, this.value); this.value='';" style="width:160px;">
@@ -1120,12 +1130,16 @@
                 </select>
                 
                 <button onclick="window.toggleTimer(${index})" style="background:${m.timerActivo ? '#fee2e2' : '#d1fae5'}; color:${m.timerActivo ? '#991b1b' : '#065f46'};">${m.timerActivo ? '⏸️ Parar' : '▶️ Play'}</button>
-                <button onclick="window.resetCrono(${index})" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; font-weight:bold; font-size:0.75rem;" title="Resetear cronómetro actual a 00:00">🔄 00:00</button>
+                <button onclick="window.resetCrono(${index})" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; font-weight:bold; font-size:0.75rem;" title="Poner a cero el cronómetro actual">🔄 00:00</button>
                 
                 <span id="timer-display-admin-${index}" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>
               </div>
             </div>
         `;
+
+        let btnTelegramHTML = (appData.config.telegramToken && appData.config.telegramToken.trim() !== "" && appData.config.telegramChatId && appData.config.telegramChatId.trim() !== "") 
+            ? `<button class="btn-action btn-tg" onclick="window.enviarResumenTelegram(${index})">🤖 Resumen TG</button>` 
+            : ``;
 
         let cuerpoHTML = "";
         
@@ -1208,6 +1222,7 @@
           cuerpoHTML = `
             <div class="card-header">
               <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">${m.jornada} - MODO DELEGADO</span>
+              <button class="btn-delete-item" style="background:#fef3c7; color:#92400e; padding:4px 8px;" onclick="window.resetearPartido(${index})" title="Opciones de Reseteo">🔄 Opciones</button>
             </div>
             
             <div class="vs-container" style="flex-direction: column; gap:10px;">
@@ -1249,7 +1264,7 @@
             ${fotoHTML}
             <div class="botones-accion">
               <button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 Resumen WA</button>
-              <button class="btn-action btn-tg" onclick="window.enviarResumenTelegram(${index})">🤖 Resumen TG</button>
+              ${btnTelegramHTML}
               <button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button>
             </div>
           `;
@@ -1271,6 +1286,10 @@
              <button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>
           </div>
           <button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>
+          
+          <div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">
+             v. 2.0 - Modo Administrador
+          </div>
         `; 
       } else { adminControls.innerHTML = ''; }
 
