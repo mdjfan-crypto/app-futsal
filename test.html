@@ -942,24 +942,31 @@
       }
     };
 
+    // --- RESTAR GOL (-1) CON PREGUNTA DISCRETA DE GOL ANULADO ---
     window.restarGol = function(index, equipo) {
       let m = appData.partidos[index];
       if (m.estadoPeriodo === 'Final') {
           if (!confirm("⚠️ Este partido ha finalizado. ¿Quieres restar un gol de todos modos?")) return;
       }
 
+      let actual = equipo === 'L' ? (parseInt(m.golesL) || 0) : (parseInt(m.golesV) || 0);
+      if (actual <= 0) return;
+
+      let nomEquipo = equipo === 'L' ? (m.local || 'Local') : (m.visitante || 'Visitante');
+      let quiereAviso = confirm("⚽ Has restado un gol (" + nomEquipo + ").\n\n¿Quieres dejar constancia en el Acta y crear un aviso discreto de 'GOL ANULADO' para WhatsApp/Telegram?\n\n👉 [Aceptar]: Sí, registrar y avisar.\n👉 [Cancelar]: No, corregir en silencio sin molestar a nadie.");
+
       if (equipo === 'L') {
-        let actual = parseInt(m.golesL) || 0;
-        if (actual > 0) {
-            m.golesL = actual - 1;
-            guardarDatos();
-        }
+        m.golesL = actual - 1;
       } else {
-        let actual = parseInt(m.golesV) || 0;
-        if (actual > 0) {
-            m.golesV = actual - 1;
-            guardarDatos();
-        }
+        m.golesV = actual - 1;
+      }
+
+      if (quiereAviso) {
+        let evId = window.agregarEventoRegistro(index, "❌ GOL ANULADO (" + nomEquipo + ")");
+        guardarDatos();
+        setTimeout(() => window.compartirFlashWA(index, evId), 300);
+      } else {
+        guardarDatos();
       }
     };
 
@@ -1051,7 +1058,7 @@
     };
 
     window.instruccionesDelegado = function() {
-      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1 para anotar o corregir goles y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.\n\n4. ERRORES: Los partidos finalizados están protegidos; si necesitas modificarlos, te pedirá confirmación.");
+      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1. Al restar un gol, la aplicación te preguntará si deseas registrar y avisar de un 'Gol anulado' o corregirlo en silencio.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes.\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.");
     };
 
     function renderApp() {
