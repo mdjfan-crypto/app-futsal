@@ -83,9 +83,10 @@
     .btn-upload { flex: 1; text-align: center; background: #f3f4f6; border: 1px dashed #9ca3af; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #4b5563; cursor: pointer; }
     .btn-delete-item { background: #fee2e2; color: #991b1b; border: none; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
     
-    .botones-accion { display: flex; gap: 8px; margin-top: 14px; }
-    .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+    .botones-accion { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;}
+    .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; min-width:100px; }
     .btn-wa { background-color: #25d366; }
+    .btn-tg { background-color: #0ea5e9; }
     .btn-img { background-color: #3b82f6; }
     
     .btn-add-match { width: 100%; background: #10b981; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -110,7 +111,7 @@
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
 
-    /* Estilos del Minuto a Minuto con 3 items y Scroll */
+    /* Estilos del Minuto a Minuto con Scroll */
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
     .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
     .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
@@ -170,25 +171,17 @@
 
     async function solicitarWakeLock() {
       if ('wakeLock' in navigator) {
-        try {
-          wakeLock = await navigator.wakeLock.request('screen');
-        } catch (err) {
-          console.error("No se pudo bloquear la pantalla:", err);
-        }
+        try { wakeLock = await navigator.wakeLock.request('screen'); } 
+        catch (err) { console.error("No se pudo bloquear la pantalla:", err); }
       }
     }
 
     function liberarWakeLock() {
-      if (wakeLock !== null) {
-        wakeLock.release().then(() => { wakeLock = null; });
-      }
+      if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); }
     }
 
-    // SI MINIMIZAMOS Y VOLVEMOS, RE-SOLICITAR LA PANTALLA ACTIVA
     document.addEventListener('visibilitychange', async () => {
-      if (wakeLock !== null && document.visibilityState === 'visible') {
-        solicitarWakeLock();
-      }
+      if (wakeLock !== null && document.visibilityState === 'visible') { solicitarWakeLock(); }
     });
 
     // LÓGICA DE PRESENCIA (USUARIOS ONLINE)
@@ -218,6 +211,8 @@
          fases: ["1ª Fase"], 
          logo: "", 
          mensajeAnimo: "¡Vamos chicas! 💛",
+         telegramToken: "",
+         telegramChatId: "",
          mensajesRapidos: [
             "🧤 ¡Paradón de nuestra portera!",
             "🥅 ¡Uy! ¡Tiro al palo!",
@@ -239,6 +234,8 @@
         fases: ["1ª Fase"],
         logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
         mensajeAnimo: "¡Vamos chicas! 💛",
+        telegramToken: "",
+        telegramChatId: "",
         mensajesRapidos: datosIniciales.config.mensajesRapidos
       };
       datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "", oculto: false, duracionParte: 25, duracionDescanso: 10 }];
@@ -259,7 +256,7 @@
         if (pass === CLAVE_SECRETA) { 
            window.modoEdicion = true; 
            window.modoMarcador = null;
-           solicitarWakeLock(); // ACTIVA PANTALLA SIEMPRE ENCENDIDA
+           solicitarWakeLock(); 
            renderApp(); 
         } else if (pass !== null && pass.trim() !== "") {
            let pinBuscado = pass.trim();
@@ -269,7 +266,7 @@
               window.modoMarcador = indexDelegado;
               window.modoEdicion = false;
               window.currentFase = appData.partidos[indexDelegado].fase || "1ª Fase";
-              solicitarWakeLock(); // ACTIVA PANTALLA SIEMPRE ENCENDIDA
+              solicitarWakeLock(); 
               renderApp();
            } else {
               alert("Contraseña o PIN incorrecto.");
@@ -278,7 +275,7 @@
       } else {
         window.modoEdicion = false;
         window.modoMarcador = null;
-        liberarWakeLock(); // PERMITE APAGAR PANTALLA
+        liberarWakeLock(); 
         renderApp();
       }
     };
@@ -291,6 +288,8 @@
         if (!appData.partidos) appData.partidos = [];
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
         if (!appData.config.mensajesRapidos) appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
+        if (!appData.config.telegramToken) appData.config.telegramToken = "";
+        if (!appData.config.telegramChatId) appData.config.telegramChatId = "";
         
         if (!appData.config.fases) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
@@ -328,7 +327,158 @@
 
     function guardarDatos() { set(appRef, appData); }
     window.actualizarConfig = function(campo, valor) { appData.config[campo] = valor; guardarDatos(); };
-    window.actualizarDato = function(index, campo, valor) { appData.partidos[index][campo] = valor; guardarDatos(); };
+
+    // --- NUEVO: CONFIGURACIÓN DE TELEGRAM ---
+    window.configurarTelegram = function() {
+       let token = prompt("Paso 1: Pega el TOKEN de tu bot de Telegram (créalo con @BotFather):", appData.config.telegramToken || "");
+       if (token !== null) {
+           let chat = prompt("Paso 2: Pega el CHAT ID de tu Canal o Grupo (ej: @MiCanalFSF o -100123456789):", appData.config.telegramChatId || "");
+           if (chat !== null) {
+               appData.config.telegramToken = token.trim();
+               appData.config.telegramChatId = chat.trim();
+               guardarDatos();
+               if(token && chat) {
+                   window.enviarTelegramRaw("🤖 ¡La aplicación Futsal se ha enlazado correctamente con este Canal/Grupo!");
+                   alert("✅ Telegram configurado. Se ha intentado enviar un mensaje de prueba al canal/grupo.");
+               }
+           }
+       }
+    };
+
+    // --- NUEVO: MOTOR DE ENVÍO SILENCIOSO A TELEGRAM ---
+    window.enviarTelegramRaw = function(texto) {
+        const token = appData.config.telegramToken;
+        const chatId = appData.config.telegramChatId;
+        if (!token || !chatId) return;
+
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: texto,
+                disable_web_page_preview: true
+            })
+        }).catch(err => console.error("Error Telegram:", err));
+    };
+
+    window.enviarFlashTelegram = function(index, evId) {
+      const m = appData.partidos[index];
+      const ev = m.eventos.find(e => e.id == evId);
+      if(!ev) return;
+      
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : `| ⏱️ ${ev.min}`;
+      let horaWa = ev.hora ? `| ⌚ ${ev.hora}` : '';
+      let lineaTiempo = `📌 ${ev.periodo} ${tiempoWa} ${horaWa}`.trim();
+      let textoLimpio = ev.texto.replace(/\*/g, ''); // Quitamos asteriscos para TG
+
+      let textoFlash = `⚡ AVISO FLASH ⚡\n\n${textoLimpio}\n${lineaTiempo}\n\n📊 Marcador: ${m.local} ${m.golesL !== "" ? m.golesL : 0} - ${m.golesV !== "" ? m.golesV : 0} ${m.visitante}\n\n📱 Ir al directo: ${appUrl}`;
+      
+      window.enviarTelegramRaw(textoFlash);
+    };
+
+    window.enviarResumenTelegram = function(index) {
+      const m = appData.partidos[index];
+      const eq = appData.config.equipo;
+      const animo = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${eq}! 💛`;
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      let linkMapaWA = m.lugar ? `\n📍 ${m.lugar}` : "";
+      
+      let estadoTxt = "";
+      if (m.estadoPeriodo === 'Final') { 
+         let finInfo = m.horaFinReal ? ` (Acabó a las ${m.horaFinReal})` : '';
+         estadoTxt = `✅ RESULTADO FINAL${finInfo} ✅`; 
+      } 
+      else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { 
+            let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+            if (m.estadoPeriodo === 'Descanso') { totalSecs = Math.max(0, totalSecs - diff); }
+            else { totalSecs += diff; }
+         }
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
+         let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ` (Min ${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')})` : '';
+         estadoTxt = `🔴 EN DIRECTO: ${m.estadoPeriodo}${minTxt} 🔴`;
+      } 
+      else if (m.golesL !== "" && m.golesV !== "") { estadoTxt = "🟡 RESULTADO FINAL 🟡"; } 
+      else { estadoTxt = "🟡 PRÓXIMO PARTIDO 🟡"; }
+
+      let goleadoresWA = "";
+      if (m.goleadoresL || m.goleadoresV) {
+         if (m.goleadoresL) goleadoresWA += `\n🏠 ${m.goleadoresL}`;
+         if (m.goleadoresV) goleadoresWA += `\n✈️ ${m.goleadoresV}`;
+         goleadoresWA += "\n";
+      }
+
+      let fechaWA = m.fecha ? `\n📅 Fecha: ${window.formatearFecha(m.fecha)}` : "\n📅 Fecha: Sin fijar";
+      let horaWA = `\n⏰ Partido: ${m.hora || 'Por confirmar'}`;
+      let presentacionWA = m.horaPresentacion ? `\n⏱️ Cita: ${m.horaPresentacion}` : "";
+
+      const texto = `${estadoTxt}\n🏆 ${m.fase} - ${m.jornada}\n⚽ ${m.local} ${m.golesL !== "" ? m.golesL : ""} - ${m.golesV !== "" ? m.golesV : ""} ${m.visitante}\n${goleadoresWA}${fechaWA}${horaWA}${presentacionWA}${linkMapaWA}\n\n📱 Ir al directo: ${appUrl}\n\n${animo}`;
+      
+      window.enviarTelegramRaw(texto);
+      alert("✅ Resumen enviado a Telegram en segundo plano.");
+    };
+
+    // SISTEMA INTELIGENTE DE NOTIFICACIÓN DE CAMBIOS
+    window.actualizarDato = function(index, campo, valor) { 
+      let m = appData.partidos[index];
+      let oldValor = m[campo] !== undefined ? m[campo].toString() : "";
+      
+      if (oldValor === valor) return; 
+      
+      m[campo] = valor; 
+      guardarDatos(); 
+
+      const camposNotificables = {
+         'fecha': { icon: '📅', label: 'Fecha de Partido', nuevo: 'FECHA CONFIRMADA', mod: 'MODIFICACIÓN DE FECHA' },
+         'hora': { icon: '⏰', label: 'Hora de Partido', nuevo: 'HORARIO CONFIRMADO', mod: 'MODIFICACIÓN DE HORARIO' },
+         'horaPresentacion': { icon: '⏱️', label: 'Hora de Convocatoria', nuevo: 'HORA DE CONVOCATORIA DEFINIDA', mod: 'MODIFICACIÓN DE CONVOCATORIA' },
+         'lugar': { icon: '📍', label: 'Pabellón/Lugar', nuevo: 'PABELLÓN CONFIRMADO', mod: 'CAMBIO DE PABELLÓN' }
+      };
+
+      if (camposNotificables[campo] && valor.trim() !== "") {
+         let isEmptyBefore = (oldValor.trim() === "" || oldValor.toLowerCase().includes("pendiente") || oldValor.toLowerCase().includes("confirmar") || oldValor.toLowerCase().includes("fijar"));
+         let notificar = false;
+         let isMod = false;
+
+         if (isEmptyBefore) {
+             if (campo === 'horaPresentacion') notificar = true; 
+         } else {
+             notificar = true;
+             isMod = true;
+         }
+
+         if (notificar) {
+             let config = camposNotificables[campo];
+             let titulo = isMod ? "⚠️ " + config.mod : "✅ " + config.nuevo;
+             
+             setTimeout(() => {
+                 if (confirm(`Has actualizado: ${config.label}.\n\n¿Quieres crear un aviso automático en el Acta y mandarlo por WhatsApp/Telegram?\n\n(Si vas a modificar más datos, pulsa Cancelar y usa el botón de "Resumen" al terminar).`)) {
+                     
+                     let valShow = (campo === 'fecha') ? window.formatearFecha(valor) : valor;
+                     let textWA = `📢 *${titulo}*\n👉 ${config.icon} *${valShow}*`;
+                     
+                     if (isMod) {
+                         let oldShow = (campo === 'fecha') ? window.formatearFecha(oldValor) : oldValor;
+                         textWA += `\n_(Antes era: ${oldShow})_`;
+                     }
+                     
+                     let evId = window.agregarEventoRegistro(index, textWA, false);
+                     guardarDatos();
+                     
+                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+                     setTimeout(() => window.compartirFlashWA(index, evId), 400); // WHATSAPP MANUAL
+                 }
+             }, 100);
+         }
+      }
+    };
     
     // GESTIÓN DE MENSAJES RÁPIDOS
     window.editarMensajesRapidos = function() {
@@ -364,7 +514,7 @@
       }
     };
 
-    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO CON HORA EXACTA (Solo si se pide explícitamente)
+    // FUNCION MAESTRA: AÑADIR EVENTOS AL REGISTRO CON HORA EXACTA
     window.agregarEventoRegistro = function(index, texto, guardarHoraLocal = false) {
       let m = appData.partidos[index];
       if (!m.eventos) m.eventos = [];
@@ -410,11 +560,11 @@
       }
     };
 
-    // NUEVA LÓGICA DE MENSAJE MANUAL PERSONALIZABLE
+    // LÓGICA DE MENSAJE MANUAL PERSONALIZABLE
     window.agregarEventoManual = function(index) {
       let txt = prompt("📝 Escribe un mensaje para el directo:");
       if(txt && txt.trim() !== "") {
-         let modoOpcion = prompt("⏱️ ¿Qué tiempo quieres mostrar junto al mensaje?\n\n1. Solo Cronómetro (Ej: 14:32)\n2. Solo Hora Local (Ej: 18:45)\n3. Ambas (Cronómetro y Hora)\n4. Ninguna (Solo la parte)\n\nEscribe 1, 2, 3 o 4:", "1");
+         let modoOpcion = prompt("⏱️ ¿Qué tiempo quieres adjuntar a este mensaje?\n\n1. Solo Cronómetro (Ej: 14:32)\n2. Solo Reloj Local (Ej: 18:45)\n3. Ambos (Crono y Reloj)\n4. Ninguno (Solo la parte)\n\nEscribe 1, 2, 3 o 4:", "1");
          
          let m = appData.partidos[index];
          if (!m.eventos) m.eventos = [];
@@ -423,8 +573,7 @@
          let horaActual = null;
          let periodoActual = m.estadoPeriodo || "Previo";
 
-         // Calcular cronometro actual si corresponde
-         if (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte' || m.estadoPeriodo === 'Descanso') {
+         if ((modoOpcion === "1" || modoOpcion === "3" || !modoOpcion) && (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte' || m.estadoPeriodo === 'Descanso')) {
              let totalSecs = m.tiempoAcumulado || 0;
              if (m.timerActivo) { 
                  let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
@@ -433,20 +582,13 @@
              }
              let mins = Math.floor(totalSecs / 60);
              let secs = totalSecs % 60;
-             let cronoStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-             
-             if(modoOpcion === "1" || modoOpcion === "3" || !modoOpcion) minTxt = cronoStr;
+             minTxt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
          }
          
          if (modoOpcion === "2" || modoOpcion === "3") {
              horaActual = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
          }
          
-         if (modoOpcion === "4") {
-             minTxt = "-";
-             horaActual = null;
-         }
-
          let newId = Date.now() + Math.floor(Math.random()*1000);
          let periodoLimpio = periodoActual;
          if (periodoLimpio.includes('1ª Parte')) periodoLimpio = '1ª Parte';
@@ -456,15 +598,19 @@
 
          m.eventos.unshift({ id: newId, texto: "🎙️ " + txt.trim(), min: minTxt, periodo: periodoLimpio, hora: horaActual });
          guardarDatos();
+         
+         window.enviarFlashTelegram(index, newId); // TELEGRAM AUTOMÁTICO
       }
     };
 
     window.agregarEventoRapido = function(index, selectElement) {
       let val = selectElement.value;
       if (!val) return;
-      window.agregarEventoRegistro(index, val);
+      let evId = window.agregarEventoRegistro(index, val);
       guardarDatos();
       selectElement.value = ""; 
+      
+      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
     };
 
     window.compartirFlashWA = function(index, evId) {
@@ -484,7 +630,7 @@
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFlash)}`, '_blank');
     };
 
-    // EL DIRECTOR INTELIGENTE DE PARTIDOS (CON REDONDEO DE TIEMPO)
+    // EL DIRECTOR INTELIGENTE DE PARTIDOS
     window.cambiarEstadoPeriodo = function(index, valor) {
       if(valor === "") return;
       let m = appData.partidos[index];
@@ -492,7 +638,6 @@
       let defaultMins = parseInt(m.duracionParte) || 25;
       let defaultDescanso = parseInt(m.duracionDescanso) || 10;
       
-      // Calcular tiempo exacto actual para verificaciones de finalización temprana
       let elapsed = m.tiempoAcumulado || 0;
       if (m.timerActivo) { 
          let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
@@ -509,6 +654,7 @@
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
          guardarDatos();
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
@@ -532,30 +678,31 @@
          
          let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración de juego: ${duracion}`, true);
          guardarDatos();
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
-         let modoCero = confirm("⏱️️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
+         let modoCero = confirm("⏱️ OPCIÓN DE CRONÓMETRO:\n\n¿Quieres que la 2ª Parte empiece desde CERO (00:00)?\n\n👉 Pulsa [Aceptar] para empezar en 00:00.\n👉 Pulsa [Cancelar] para continuar desde " + defaultMins + ":00.");
          
          m.estadoPeriodo = "2ª Parte";
          m.tiempoAcumulado = modoCero ? 0 : defaultMins * 60;
          m.timerActivo = true;
          m.timerInicio = Date.now();
 
-         // COMPROBAR Y REGISTRAR LA DURACIÓN DEL DESCANSO EN EL ACTA WEB
          if (m.timerDescansoInicio) {
              let elapsedDescanso = Math.floor((Date.now() - m.timerDescansoInicio) / 1000);
              let minsD = Math.floor(elapsedDescanso / 60);
              let secsD = elapsedDescanso % 60;
              let duracionDescansoStr = `${minsD.toString().padStart(2, '0')}:${secsD.toString().padStart(2, '0')}`;
              
-             // Registramos el evento pero SIN lanzar WhatsApp
-             window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración real: ${duracionDescansoStr}`, false);
+             let evIdDesc = window.agregarEventoRegistro(index, `⏳ Fin del descanso | Duración real: ${duracionDescansoStr}`, false);
+             window.enviarFlashTelegram(index, evIdDesc); // Manda el fin de descanso solo por Telegram
              m.timerDescansoInicio = null;
          }
 
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "Final") {
@@ -579,6 +726,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
          guardarDatos();
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
     };
@@ -602,7 +750,6 @@
        guardarDatos();
     };
 
-    // GESTIÓN DE PESTAÑAS Y LOGO
     window.procesarLogo = function(event) { 
       const file = event.target.files[0];
       if (!file) return;
@@ -672,22 +819,23 @@
       }
     };
 
-    // FUNCIONES DEL DIRECTO Y GOLES
     window.sumarGol = function(index, equipo) {
       let m = appData.partidos[index];
       let nombre = prompt("⚽ ¿Quién ha marcado? (Déjalo en blanco si no lo sabes)");
       
       let textoGol = nombre ? nombre.trim() : "";
+      let evId;
       if (equipo === 'L') { 
         m.golesL = (parseInt(m.golesL) || 0) + 1; 
         if (textoGol) m.goleadoresL = m.goleadoresL ? m.goleadoresL + ", " + textoGol : textoGol;
-        window.agregarEventoRegistro(index, `⚽ GOL ${m.local}` + (nombre ? ` (${nombre.trim()})` : ""));
+        evId = window.agregarEventoRegistro(index, `⚽ GOL ${m.local}` + (nombre ? ` (${nombre.trim()})` : ""));
       } else { 
         m.golesV = (parseInt(m.golesV) || 0) + 1; 
         if (textoGol) m.goleadoresV = m.goleadoresV ? m.goleadoresV + ", " + textoGol : textoGol;
-        window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante}` + (nombre ? ` (${nombre.trim()})` : ""));
+        evId = window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
       guardarDatos();
+      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
     };
 
     window.toggleTimer = function(index) {
@@ -698,7 +846,8 @@
       
       if (!m.estadoPeriodo || m.estadoPeriodo === 'Sin empezar') {
          m.estadoPeriodo = '1ª Parte';
-         window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true); 
+         let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true); 
+         window.enviarFlashTelegram(index, evId);
       }
 
       if (m.timerActivo) {
@@ -723,23 +872,6 @@
       guardarDatos();
     };
 
-    window.resetearPartido = function(index) {
-      let m = appData.partidos[index];
-      let opcion = prompt("🔄 OPCIONES DE RESETEO:\n\n1. ⚽ Borrar solo Goles y Goleadores\n2. ⚠️ Resetear TODO el partido a 0\n\nEscribe 1 o 2 y pulsa Aceptar:");
-      
-      if (opcion === "1") {
-        m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
-      } else if (opcion === "2") {
-        if(confirm("¿Seguro que quieres borrar a cero tanto el reloj como los goles?")) {
-           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = "";
-           m.golesL = ""; m.golesV = ""; m.goleadoresL = ""; m.goleadoresV = "";
-           m.eventos = []; 
-           m.timerDescansoInicio = null;
-        }
-      }
-      if(["1","2"].includes(opcion)) guardarDatos();
-    };
-
     window.anadirPartido = function() {
       let partidosEnFase = appData.partidos.filter(p => (p.fase || "1ª Fase") === window.currentFase).length;
       appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: `Jornada ${partidosEnFase + 1}`, fecha: "", hora: "", horaPresentacion: "", local: appData.config.equipo, visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false });
@@ -757,7 +889,7 @@
     };
 
     window.instruccionesDelegado = function() {
-      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 para anotar y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj se gestiona solo y avisa por WhatsApp al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) o escribe mensajes a mano (✍️). ¡Se publican en la web y los puedes mandar a WhatsApp con el botón de '💬 WA'!\n\n4. RESET CRONO: Usa el botón '🔄 00:00' para reiniciar el reloj de la parte actual si te equivocas.");
+      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 para anotar y apuntar quién marca.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes. ¡Al iniciar o acabar cada parte, el reloj se gestiona solo y avisa por WhatsApp y Telegram al instante!\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) o escribe mensajes a mano (✍️). ¡Se publican en la web y los puedes mandar a WhatsApp con el botón de '💬 WA'!\n\n4. RESET CRONO: Usa el botón '🔄 00:00' para reiniciar el reloj de la parte actual si te equivocas.");
     };
 
     function renderApp() {
@@ -765,7 +897,6 @@
       let logoRender = appData.config.logo ? `<img src="${appData.config.logo}" class="header-logo">` : '';
       let animoValor = appData.config.mensajeAnimo !== undefined ? appData.config.mensajeAnimo : `¡Vamos ${appData.config.equipo}! 💛`;
 
-      // GENERAR OPCIONES DE MENSAJES RÁPIDOS
       let opcionesRapidasHTML = `<option value="">⚡ Rápido...</option>`;
       if (appData.config.mensajesRapidos) {
          appData.config.mensajesRapidos.forEach(msg => {
@@ -808,7 +939,6 @@
         `;
       }
 
-      // RENDER PESTAÑAS
       const tabsMenu = document.getElementById('tabsMenu');
       if (window.modoMarcador === null) {
           let tabsHTML = `<div class="tabs-wrapper">`;
@@ -828,7 +958,6 @@
           tabsMenu.innerHTML = '';
       }
 
-      // RENDER FILTROS
       const filterMenu = document.getElementById('filterMenu');
       if (!window.modoEdicion && window.modoMarcador === null) {
         filterMenu.innerHTML = `
@@ -859,7 +988,6 @@
       let partidosMostrados = 0;
 
       appData.partidos.forEach((m, index) => {
-        // FILTROS DE VISUALIZACIÓN
         if (window.modoMarcador !== null) {
             if (index !== window.modoMarcador) return; 
         } else {
@@ -952,11 +1080,12 @@
               ${(m.eventos && m.eventos.length > 0) ? m.eventos.map(ev => {
                 let minHtml = ev.min !== '-' ? ` | ⏱️ ${ev.min}` : '';
                 let horaHtml = ev.hora ? ` | ⌚ ${ev.hora}` : '';
+                let textoWeb = ev.texto.replace(/\*/g, ''); // Quitamos los asteriscos de WA para que quede limpio en HTML
                 return `
                 <div class="log-item">
                    <div style="flex:1; line-height:1.4;">
                      <span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[${ev.periodo}${minHtml}${horaHtml}]</span><br>
-                     <span style="font-weight:600; color:var(--text);">${ev.texto}</span>
+                     <span style="font-weight:600; color:var(--text); white-space: pre-line;">${textoWeb}</span>
                    </div>
                    ${isEditable ? `
                      <div style="display:flex; gap:4px; align-items:center;">
@@ -1118,7 +1247,11 @@
               <div class="info-item info-full"><span class="info-label">📍 Pabellón</span>${linkMapaHTML}</div>
             </div>
             ${fotoHTML}
-            <div class="botones-accion"><button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 Resumen WhatsApp</button><button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button></div>
+            <div class="botones-accion">
+              <button class="btn-action btn-wa" onclick="window.compartirWA(${index})">💬 Resumen WA</button>
+              <button class="btn-action btn-tg" onclick="window.enviarResumenTelegram(${index})">🤖 Resumen TG</button>
+              <button class="btn-action btn-img" onclick="window.descargarImagen(${index})">📸 Imagen</button>
+            </div>
           `;
         }
         card.innerHTML = cuerpoHTML;
@@ -1133,7 +1266,10 @@
       if (window.modoEdicion) { 
         adminControls.innerHTML = `
           <button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "${window.currentFase}"</button>
-          <button class="btn-new-season" onclick="window.editarMensajesRapidos()" style="background:#8b5cf6; margin-bottom:10px;">💬 Configurar Mensajes Rápidos</button>
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+             <button class="btn-new-season" onclick="window.editarMensajesRapidos()" style="background:#8b5cf6; margin:0; flex:1; padding:10px; font-size:0.9rem;">💬 Configurar Mensajes Rápidos</button>
+             <button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>
+          </div>
           <button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>
         `; 
       } else { adminControls.innerHTML = ''; }
