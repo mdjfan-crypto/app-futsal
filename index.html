@@ -166,11 +166,11 @@
     window.initialLoadDone = false; 
     const CLAVE_SECRETA = "padresfsf";
 
-    // --- FUNCIÓN DE BLINDAJE PARA ARREGLAR ARRAYS ROTOS POR FIREBASE ---
-    const forceArray = (data) => {
+    // --- FUNCIÓN SÚPER ESCUDO: CURA CUALQUIER LISTA ROTA POR FIREBASE ---
+    window.safeArray = function(data) {
         if (!data) return [];
-        if (Array.isArray(data)) return data.filter(e => e !== null && e !== undefined);
-        if (typeof data === 'object') return Object.values(data).filter(e => e !== null && e !== undefined);
+        if (Array.isArray(data)) return data.filter(item => item !== null && item !== undefined);
+        if (typeof data === 'object') return Object.values(data).filter(item => item !== null && item !== undefined);
         return [data];
     };
 
@@ -256,7 +256,6 @@
       return fechaOriginal;
     };
 
-    // LÓGICA DE INICIO DE SESIÓN
     window.toggleEdicion = function() {
       if (!window.modoEdicion && window.modoMarcador === null) {
         let pass = prompt("Contraseña de administrador o PIN de delegado:");
@@ -295,18 +294,20 @@
       if (data) {
         appData = data;
         
-        // --- APLICACIÓN DEL SÚPER ESCUDO A TODA LA BASE DE DATOS ---
+        // --- LIMPIEZA ABSOLUTA DE BASE DE DATOS USANDO SÚPER ESCUDO ---
         if (!appData.config) appData.config = { ...datosIniciales.config }; 
         if (!appData.config.mensajeAnimo) appData.config.mensajeAnimo = "¡Vamos chicas! 💛";
         if (!appData.config.telegramToken) appData.config.telegramToken = "";
         if (!appData.config.telegramChatId) appData.config.telegramChatId = "";
         
-        appData.config.mensajesRapidos = forceArray(appData.config.mensajesRapidos);
+        // Blindar listas maestras
+        appData.config.mensajesRapidos = window.safeArray(appData.config.mensajesRapidos);
         if (appData.config.mensajesRapidos.length === 0) appData.config.mensajesRapidos = datosIniciales.config.mensajesRapidos;
 
-        appData.partidos = forceArray(appData.partidos);
+        appData.config.fases = window.safeArray(appData.config.fases);
         
-        appData.config.fases = forceArray(appData.config.fases);
+        appData.partidos = window.safeArray(appData.partidos);
+
         if (appData.config.fases.length === 0) {
            let computedFases = [...new Set(appData.partidos.map(p => p.fase || "1ª Fase"))];
            appData.config.fases = computedFases.length > 0 ? computedFases : ["1ª Fase"];
@@ -316,7 +317,8 @@
            if(!p.id) p.id = Date.now() + idx; 
            if(!p.fase) p.fase = "1ª Fase"; 
            
-           p.eventos = forceArray(p.eventos);
+           // Blindar eventos de cada partido
+           p.eventos = window.safeArray(p.eventos);
            
            if(p.mostrarMaps === undefined) p.mostrarMaps = (p.ocultarEnlacesWa === true) ? false : true;
            if(p.mostrarWaze === undefined) p.mostrarWaze = (p.ocultarEnlacesWa === true) ? false : true;
@@ -501,8 +503,8 @@
                      let evId = window.agregarEventoRegistro(index, textWA, false);
                      guardarDatos();
                      
-                     window.enviarFlashTelegram(index, evId); 
-                     setTimeout(() => window.compartirFlashWA(index, evId), 400); 
+                     window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
+                     setTimeout(() => window.compartirFlashWA(index, evId), 400); // WHATSAPP MANUAL
                  }
              }, 100);
          }
@@ -628,7 +630,7 @@
          m.eventos.unshift({ id: newId, texto: "🎙️ " + txt.trim(), min: minTxt, periodo: periodoLimpio, hora: horaActual });
          guardarDatos();
          
-         window.enviarFlashTelegram(index, newId);
+         window.enviarFlashTelegram(index, newId); // TELEGRAM AUTOMÁTICO
       }
     };
 
@@ -639,7 +641,7 @@
       guardarDatos();
       selectElement.value = ""; 
       
-      window.enviarFlashTelegram(index, evId);
+      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
     };
 
     window.compartirFlashWA = function(index, evId) {
@@ -683,7 +685,7 @@
          m.timerInicio = Date.now();
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 1ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId);
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600); 
          
       } else if (valor === "Descanso") {
@@ -707,7 +709,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏸️ Fin 1ª Parte | Duración de juego: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId);
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "2ª Parte") {
@@ -731,7 +733,7 @@
 
          let evId = window.agregarEventoRegistro(index, `▶️ Comienza la 2ª Parte`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId);
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
          
       } else if (valor === "Final") {
@@ -755,7 +757,7 @@
          
          let evId = window.agregarEventoRegistro(index, `⏹️ Final del partido | Duración 2ªP: ${duracion}`, true);
          guardarDatos();
-         window.enviarFlashTelegram(index, evId);
+         window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
          setTimeout(() => window.compartirFlashWA(index, evId), 600);
       }
     };
@@ -868,7 +870,7 @@
         evId = window.agregarEventoRegistro(index, `⚽ GOL ${m.visitante || 'Visitante'}` + (nombre ? ` (${nombre.trim()})` : ""));
       }
       guardarDatos();
-      window.enviarFlashTelegram(index, evId);
+      window.enviarFlashTelegram(index, evId); // TELEGRAM AUTOMÁTICO
     };
 
     window.toggleTimer = function(index) {
