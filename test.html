@@ -36,6 +36,8 @@
     .header-edit input.title-input { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
     
     #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
+    .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: var(--primary); padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; }
+    
     #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; }
     
     .container { max-width: 600px; margin: 0 auto; padding: 14px; }
@@ -964,7 +966,8 @@
       if (quiereAviso) {
         let evId = window.agregarEventoRegistro(index, "❌ GOL ANULADO (" + nomEquipo + ")");
         guardarDatos();
-        setTimeout(() => window.compartirFlashWA(index, evId), 300);
+        window.enviarFlashTelegram(index, evId); // AVISO FLASH AUTOMÁTICO A TELEGRAM
+        setTimeout(() => window.compartirFlashWA(index, evId), 300); // AVISO MANUAL A WHATSAPP
       } else {
         guardarDatos();
       }
@@ -990,6 +993,7 @@
       }
       guardarDatos();
       window.enviarFlashTelegram(index, evId); 
+      setTimeout(() => window.compartirFlashWA(index, evId), 300); // AVISO FLASH AUTOMÁTICO A WHATSAPP TAMBIÉN
     };
 
     window.toggleTimer = function(index) {
@@ -1058,7 +1062,7 @@
     };
 
     window.instruccionesDelegado = function() {
-      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1. Al restar un gol, la aplicación te preguntará si deseas registrar y avisar de un 'Gol anulado' o corregirlo en silencio.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes.\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.");
+      alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1. Al sumar o restar un gol, la aplicación genera avisos flash automáticos para mantener informada a la afición.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes.\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.");
     };
 
     function renderApp() {
@@ -1081,6 +1085,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
+          '<div class="version-badge">v. 2.2</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1090,6 +1095,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
+          '<div class="version-badge">v. 2.2</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1097,7 +1103,8 @@
              '<button onclick="window.toggleEdicion()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">Salir</button>' +
           '</div>';
       } else {
-        header.innerHTML = logoRender +
+        header.innerHTML = '<div class="version-badge">v. 2.2</div>' +
+          logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
           '<button id="btnLock" onclick="window.toggleEdicion()">🔒</button>';
@@ -1435,7 +1442,7 @@
              '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
           '</div>' +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.0 - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.2 - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
