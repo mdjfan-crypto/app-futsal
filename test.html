@@ -854,7 +854,20 @@
       }
     };
 
+    // --- FUNCIÓN RESTAURADA Y SEPARADA ---
     window.resetCrono = function(index) {
+      let m = appData.partidos[index];
+      if (m.estadoPeriodo === 'Final') {
+          if (!confirm("⚠️ Este partido ha finalizado. ¿Seguro que quieres poner el cronómetro a 00:00?")) return;
+      } else {
+          if (!confirm("¿Seguro que quieres poner el cronómetro a 00:00?")) return;
+      }
+      m.tiempoAcumulado = 0;
+      if (m.timerActivo) { m.timerInicio = Date.now(); }
+      guardarDatos();
+    };
+
+    window.resetearPartido = function(index) {
       let m = appData.partidos[index];
       if (m.estadoPeriodo === 'Final') {
           if (!confirm("⚠️ ¡ADVERTENCIA! Este partido ya figura como FINALIZADO.\n\n¿Estás completamente seguro de que quieres modificarlo o resetearlo?")) return;
@@ -885,6 +898,7 @@
         }
       }
     };
+    // ----------------------------------------
 
     window.procesarLogo = function(event) { 
       const file = event.target.files[0];
@@ -1106,7 +1120,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
-          '<div class="version-badge">v. 2.4</div>' +
+          '<div class="version-badge">v. 2.4.1</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1116,7 +1130,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
-          '<div class="version-badge">v. 2.4</div>' +
+          '<div class="version-badge">v. 2.4.1</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1124,7 +1138,7 @@
              '<button onclick="window.toggleEdicion()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">Salir</button>' +
           '</div>';
       } else {
-        header.innerHTML = '<div class="version-badge">v. 2.4</div>' +
+        header.innerHTML = '<div class="version-badge">v. 2.4.1</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1369,8 +1383,8 @@
                 '</div>' +
                 '<input type="text" class="team-input" value="' + (m.visitante || '') + '" onchange="window.actualizarDato(' + index + ', \'visitante\', this.value)">' +
                 '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
-                  '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL || '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
-                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.goleadoresV || '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                 '</div>' +
               '</div>' + panelDirectoHTML + eventosHTML +
               '<div class="info-grid">' +
@@ -1463,7 +1477,7 @@
              '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
           '</div>' +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.4 - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.4.1 - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
