@@ -94,11 +94,17 @@
     label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
     input[type="text"], input[type="time"], input[type="date"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; margin-top: 2px; }
     
-    .foto-container { margin-top: 12px; width: 100%; }
-    .foto-img { width: 100%; border-radius: 8px; object-fit: cover; max-height: 300px; display: block; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .foto-uploader { margin-top: 10px; display: flex; gap: 8px; }
+    /* MEJORAS DE FOTOS Y VISOR (LIGHTBOX) */
+    .foto-container { margin-top: 12px; width: 100%; text-align: center; background:#f9fafb; border:1px dashed #d1d5db; padding:6px; border-radius:8px;}
+    .foto-img { width: 100%; border-radius: 6px; object-fit: cover; max-height: 250px; display: block; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
+    .foto-img:active { transform: scale(0.98); }
+    .foto-uploader { display: flex; gap: 8px; }
     .btn-upload { flex: 1; text-align: center; background: #f3f4f6; border: 1px dashed #9ca3af; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #4b5563; cursor: pointer; }
     .btn-delete-item { background: #fee2e2; color: #991b1b; border: none; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    
+    #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
+    #lightbox img { max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .lightbox-close { background: #ef4444; color: white; font-weight: bold; font-size: 1rem; padding: 10px 20px; border-radius: 999px; margin-top: 20px; cursor: pointer; border:none; }
     
     .botones-accion { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;}
     .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; min-width:100px; }
@@ -138,6 +144,12 @@
   </style>
 </head>
 <body>
+
+  <!-- VISOR DE FOTOS A PANTALLA COMPLETA -->
+  <div id="lightbox" onclick="window.cerrarFoto()">
+    <img id="lightbox-img" src="">
+    <button class="lightbox-close">✖ Cerrar visor</button>
+  </div>
 
   <header id="mainHeader"></header>
   
@@ -197,7 +209,7 @@
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
     window.initialLoadDone = false; 
-    window.onlineCount = 1; // Contador global de usuarios
+    window.onlineCount = 1; 
     const CLAVE_SECRETA = "padresfsf";
 
     window.safeArray = function(data) {
@@ -217,7 +229,15 @@
         return [data];
     };
 
-    // --- MEJORA: ANTI-APAGADO GLOBAL PARA TODOS (ADMIN Y ESPECTADOR) ---
+    // Funciones del Visor de Fotos
+    window.abrirFoto = function(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').style.display = 'flex';
+    };
+    window.cerrarFoto = function() {
+        document.getElementById('lightbox').style.display = 'none';
+    };
+
     let wakeLock = null;
     async function solicitarWakeLock() {
       if ('wakeLock' in navigator && wakeLock === null) {
@@ -228,7 +248,6 @@
     document.addEventListener('visibilitychange', async function() {
       if (document.visibilityState === 'visible') { solicitarWakeLock(); }
     });
-    // Se activa la pantalla siempre encendida al primer toque del usuario (requisito de los navegadores)
     document.addEventListener('click', solicitarWakeLock, { once: true });
     document.addEventListener('touchstart', solicitarWakeLock, { once: true });
 
@@ -270,7 +289,7 @@
             "⚠️ 5 Faltas acumuladas"
          ]
       },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false }]
+      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", fotoActa: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false }]
     };
 
     if (idEquipoActual === 'alcorcon26') {
@@ -284,7 +303,7 @@
         telegramChatId: "",
         mensajesRapidos: datosIniciales.config.mensajesRapidos
       };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", eventos: [], pinMarcador: "", oculto: false, duracionParte: 25, duracionDescanso: 10 }];
+      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", fotoActa: "", eventos: [], pinMarcador: "", oculto: false, duracionParte: 25, duracionDescanso: 10 }];
     }
 
     window.formatearFecha = function(fechaOriginal) {
@@ -373,6 +392,7 @@
                if(p.duracionDescanso === undefined) p.duracionDescanso = 10;
                if(p.golesL === undefined) p.golesL = "";
                if(p.golesV === undefined) p.golesV = "";
+               if(p.fotoActa === undefined) p.fotoActa = ""; // NUEVO CAMPO
             });
 
             const matchIdParam = urlParams.get('match');
@@ -1069,7 +1089,7 @@
       for(let i=0; i<appData.partidos.length; i++){
           if((appData.partidos[i].fase || "1ª Fase") === window.currentFase) contador++;
       }
-      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: "Jornada " + (contador + 1), fecha: "", hora: "", horaPresentacion: "", local: (appData.config && appData.config.equipo) ? appData.config.equipo : "NUEVO EQUIPO", visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false });
+      appData.partidos.push({ id: Date.now(), fase: window.currentFase, jornada: "Jornada " + (contador + 1), fecha: "", hora: "", horaPresentacion: "", local: (appData.config && appData.config.equipo) ? appData.config.equipo : "NUEVO EQUIPO", visitante: "Nuevo Rival", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", fotoActa: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false });
       guardarDatos();
     };
 
@@ -1096,6 +1116,27 @@
       alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1. Al sumar o restar un gol, la aplicación genera avisos flash automáticos para mantener informada a la afición.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes.\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.\n\n4. ERRORES: Los partidos finalizados están protegidos; si necesitas modificarlos, te pedirá confirmación.");
     };
 
+    // --- FUNCIÓN ADAPTADA PARA FOTO DE EQUIPO Y ACTA ARBITRAL ---
+    window.procesarFotoEspecial = function(event, index, campoGuardado) { 
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024; // Resolución alta para leer textos del acta
+          let width = img.width, height = img.height;
+          if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          window.actualizarDato(index, campoGuardado, canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
     function renderApp() {
       const header = document.getElementById('mainHeader');
       let logoRender = (appData.config && appData.config.logo) ? '<img src="' + appData.config.logo + '" class="header-logo">' : '';
@@ -1111,7 +1152,6 @@
          });
       }
 
-      // Contador online dinámico para todos los modos
       let onlineBadgeHtml = '<div id="onlineBadge">👁️ ' + (window.onlineCount || 1) + ' online</div>';
 
       if (window.modoEdicion) {
@@ -1119,7 +1159,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 2.5</div>' +
+          '<div class="version-badge">v. 2.7</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1129,7 +1169,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 2.5</div>' +
+          '<div class="version-badge">v. 2.7</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1138,7 +1178,7 @@
           '</div>';
       } else {
         header.innerHTML = onlineBadgeHtml + 
-          '<div class="version-badge">v. 2.5</div>' +
+          '<div class="version-badge">v. 2.7</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1195,7 +1235,6 @@
 
       const container = document.getElementById('matchList');
       container.innerHTML = '';
-      // MEJORA: Hacemos que el contenedor sea Flex para poder ordenar las tarjetas
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
 
@@ -1232,21 +1271,19 @@
             card.className = 'card ' + cardClass;
             card.id = 'tarjeta-' + index; 
             
-            // MEJORA: En modo edición, mandamos los finalizados al fondo de la lista
             if (window.modoEdicion) {
                 if (isFinalizado) {
                     card.style.order = '2';
-                    card.style.opacity = '0.7'; // Más transparente para que moleste menos visualmente
+                    card.style.opacity = '0.7'; 
                 } else {
                     card.style.order = '1';
                 }
-                
                 if (m.oculto) {
                     card.style.border = '2px dashed #9ca3af';
                     card.style.borderLeft = '5px solid #9ca3af';
                 }
             } else {
-                card.style.order = '1'; // Espectador/Delegado los ve normales
+                card.style.order = '1'; 
             }
             
             let nextBannerHTML = '';
@@ -1256,7 +1293,10 @@
                 card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
             }
 
-            let fotoHTML = m.foto ? '<div class="foto-container"><img src="' + m.foto + '" class="foto-img"></div>' : "";
+            // NUEVO SISTEMA DE FOTOS SEPARADAS (PARTIDO Y ACTA)
+            let fotoPartidoHTML = m.foto ? '<div class="foto-container"><span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">📸 Foto del Partido (Toca para ampliar)</span><br><img src="' + m.foto + '" class="foto-img" onclick="window.abrirFoto(\'' + m.foto + '\')" style="cursor:zoom-in; margin-top:4px;"></div>' : "";
+            let fotoActaHTML = m.fotoActa ? '<div class="foto-container" style="background:#eff6ff; border-color:#93c5fd;"><span style="font-size:0.7rem; color:#1e40af; text-transform:uppercase; font-weight:bold;">📝 Acta Arbitral (Toca para ampliar)</span><br><img src="' + m.fotoActa + '" class="foto-img" onclick="window.abrirFoto(\'' + m.fotoActa + '\')" style="cursor:zoom-in; margin-top:4px;"></div>' : "";
+            let fotosPublicasCombinadas = fotoPartidoHTML + fotoActaHTML;
             
             let linkMapaHTML = m.lugar || "";
             let strLugar = String(m.lugar || "").toLowerCase();
@@ -1373,7 +1413,25 @@
 
             if (window.modoEdicion) {
               let btnOculto = m.oculto ? '<button onclick="window.actualizarDato(' + index + ', \'oculto\', false)" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; font-size:0.75rem; font-weight:bold; cursor:pointer;" title="El partido está oculto al público. Pulsa para hacerlo visible.">🙈 Oculto</button>' : '<button onclick="window.actualizarDato(' + index + ', \'oculto\', true)" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; border-radius:4px; padding:2px 6px; font-size:0.75rem; font-weight:bold; cursor:pointer;" title="El partido es visible. Pulsa para ocultarlo.">👁️ Visible</button>';
-              let btnDeleteFoto = m.foto ? '<button class="btn-delete-item" onclick="window.actualizarDato(' + index + ', \'foto\', \'\')">🗑️</button>' : '';
+              
+              // PANEL DE FOTOS PARA ADMIN (DOS BOTONES SEPARADOS)
+              let btnDeleteFoto = m.foto ? '<button class="btn-delete-item" onclick="window.actualizarDato(' + index + ', \'foto\', \'\')" title="Borrar foto del equipo/partido">🗑️</button>' : '';
+              let btnDeleteActa = m.fotoActa ? '<button class="btn-delete-item" onclick="window.actualizarDato(' + index + ', \'fotoActa\', \'\')" title="Borrar Acta">🗑️</button>' : '';
+              
+              let panelFotosAdmin = '<div style="display:flex; flex-direction:column; gap:8px; margin-top:12px; background:#f9fafb; padding:10px; border-radius:8px; border:1px dashed #d1d5db;">' +
+                 '<div style="font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">📷 Archivos del Partido</div>' +
+                 '<div class="foto-uploader" style="margin-top:0;">' +
+                   '<input type="file" id="upload-foto-' + index + '" accept="image/*" onchange="window.procesarFotoEspecial(event, ' + index + ', \'foto\')" style="display:none;">' +
+                   '<button class="btn-upload" onclick="document.getElementById(\'upload-foto-' + index + '\').click()">📸 ' + (m.foto ? 'Cambiar Foto Partido' : 'Añadir Foto Partido') + '</button>' +
+                   btnDeleteFoto +
+                 '</div>' +
+                 '<div class="foto-uploader" style="margin-top:0;">' +
+                   '<input type="file" id="upload-acta-' + index + '" accept="image/*" onchange="window.procesarFotoEspecial(event, ' + index + ', \'fotoActa\')" style="display:none;">' +
+                   '<button class="btn-upload" onclick="document.getElementById(\'upload-acta-' + index + '\').click()" style="background:#eff6ff; border-color:#93c5fd; color:#1e40af;">📝 ' + (m.fotoActa ? 'Cambiar Acta' : 'Añadir Acta') + '</button>' +
+                   btnDeleteActa +
+                 '</div>' +
+              '</div>';
+
               let avisoFinalizadoAdmin = isFinalizado ? '<div style="background:#d1fae5; color:#047857; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:bold; text-align:center; margin-bottom:8px;">✅ Partido Finalizado y Protegido</div>' : '';
 
               cuerpoHTML = avisoFinalizadoAdmin + '<div class="card-header">' +
@@ -1398,8 +1456,8 @@
                 '</div>' +
                 '<input type="text" class="team-input" value="' + (m.visitante || '') + '" onchange="window.actualizarDato(' + index + ', \'visitante\', this.value)">' +
                 '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
-                  '<input type="text" placeholder="Goleadores Local" value="' + (m.golesL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
-                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.goleadoresV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                 '</div>' +
               '</div>' + panelDirectoHTML + eventosHTML +
               '<div class="info-grid">' +
@@ -1431,7 +1489,8 @@
                      '<span style="font-size:0.7rem; color:#92400e; align-self:center;">Permite que otro padre entre al candado para controlar ESE partido sin poder borrar nada.</span>' +
                   '</div>' +
                 '</div>' +
-              '</div>' + fotoHTML + '<div class="foto-uploader"><label class="btn-upload">📸 ' + (m.foto ? 'Cambiar Foto' : 'Subir Foto') + ' <input type="file" accept="image/*" onchange="window.procesarFoto(event, ' + index + ')" style="display:none;"></label>' + btnDeleteFoto + '</div>';
+              '</div>' + fotosPublicasCombinadas + panelFotosAdmin;
+
             } else if (window.modoMarcador === index) {
               let avisoFinalizadoDelegado = isFinalizado ? '<div style="background:#d1fae5; color:#047857; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:bold; text-align:center; margin-bottom:8px;">✅ Partido Finalizado y Protegido</div>' : '';
               cuerpoHTML = avisoFinalizadoDelegado + '<div class="card-header">' +
@@ -1468,7 +1527,7 @@
                   '<div class="info-item"><span class="info-label">⏰ Partido</span>' + (m.hora || 'Por confirmar') + '</div>' +
                   presentacionHtml +
                   '<div class="info-item info-full"><span class="info-label">📍 Pabellón</span>' + linkMapaHTML + '</div>' +
-                '</div>' + fotoHTML +
+                '</div>' + fotosPublicasCombinadas +
                 '<div class="botones-accion">' +
                   '<button class="btn-action btn-wa" onclick="window.compartirWA(' + index + ')">💬 Resumen WA</button>' +
                   btnTelegramHTML +
@@ -1492,7 +1551,7 @@
              '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
           '</div>' +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.5 - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.7 - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
@@ -1553,116 +1612,6 @@
       });
     }, 1000);
 
-    window.procesarFoto = function(event, index) { 
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          let width = img.width, height = img.height;
-          if (width > MAX_WIDTH) { height = height * (MAX_WIDTH / width); width = MAX_WIDTH; }
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          window.actualizarDato(index, 'foto', canvas.toDataURL('image/jpeg', 0.7));
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    };
-
-    window.compartirWA = function(index) {
-      const m = appData.partidos[index];
-      const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
-      const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
-      
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
-      const enlaceDirectoWA = '\n📱 *Ir al directo:* ' + appUrl;
-
-      let linkMapaWA = "";
-      let strLugar = String(m.lugar || "").toLowerCase();
-      
-      if (m.lugar && strLugar.indexOf("pendiente") === -1 && strLugar.indexOf("confirmar") === -1) {
-        let customLink = (m.linkMapa && String(m.linkMapa).trim() !== "") ? String(m.linkMapa).trim() : "";
-        if (customLink.indexOf("intent://") === 0) {
-           let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
-           customLink = fallbackMatch ? decodeURIComponent(fallbackMatch[1]) : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
-        }
-        let targetUrl = customLink ? customLink : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
-        let wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(m.lugar);
-        
-        linkMapaWA = '\n📍 *' + m.lugar + '*';
-        if (m.mostrarMaps !== false) linkMapaWA += '\n🗺️ Maps: ' + targetUrl;
-        if (m.mostrarWaze !== false) linkMapaWA += '\n🚙 Waze: ' + wazeUrl;
-      } else {
-        linkMapaWA = m.lugar ? '\n📍 *' + m.lugar + '*' : "";
-      }
-
-      let estadoTxt = "";
-      if (m.estadoPeriodo === 'Final') { 
-         let finInfo = m.horaFinReal ? ' (Acabó a las ' + m.horaFinReal + ')' : '';
-         estadoTxt = '✅ *RESULTADO FINAL*' + finInfo + ' ✅'; 
-      } 
-      else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
-         let totalSecs = m.tiempoAcumulado || 0;
-         if (m.timerActivo) { 
-            let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
-            if (m.estadoPeriodo === 'Descanso') { totalSecs = Math.max(0, totalSecs - diff); }
-            else { totalSecs += diff; }
-         }
-         let mins = Math.floor(totalSecs / 60);
-         let secs = totalSecs % 60;
-         
-         let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ' (Min ' + mins.toString().padStart(2,'0') + ':' + secs.toString().padStart(2,'0') + ')' : '';
-         let inicioWA = m.horaReal ? ' (Inició a las ' + m.horaReal + ')' : '';
-         estadoTxt = '🔴 *EN DIRECTO: ' + m.estadoPeriodo + minTxt + inicioWA + '* 🔴';
-      } 
-      else if (m.golesL !== "" && m.golesV !== "") { estadoTxt = "🟡 *RESULTADO FINAL* 🟡"; } 
-      else { estadoTxt = "🟡 *PRÓXIMO PARTIDO* 🟡"; }
-
-      let goleadoresWA = "";
-      if (m.goleadoresL || m.goleadoresV) {
-         if (m.goleadoresL) goleadoresWA += '\n🏠 ' + m.goleadoresL;
-         if (m.goleadoresV) goleadoresWA += '\n✈️ ' + m.goleadoresV;
-         goleadoresWA += "\n";
-      }
-
-      let fechaWA = m.fecha ? '\n📅 *Fecha:* ' + window.formatearFecha(m.fecha) : "\n📅 *Fecha:* Sin fijar";
-      let horaWA = '\n⏰ *Partido:* ' + (m.hora || 'Por confirmar');
-      let presentacionWA = m.horaPresentacion ? '\n⏱️ *Cita:* ' + m.horaPresentacion : "";
-
-      let vL = m.golesL !== "" ? '*' + m.golesL + '*' : "";
-      let vV = m.golesV !== "" ? '*' + m.golesV + '*' : "";
-      const texto = estadoTxt + '\n🏆 *' + (m.fase || '') + ' - ' + (m.jornada || '') + '*\n⚽ ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n' + goleadoresWA + fechaWA + horaWA + presentacionWA + linkMapaWA + '\n' + enlaceDirectoWA + '\n\n' + animo;
-      
-      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(texto), '_blank');
-    };
-
-    window.descargarImagen = function(index) {
-      const estabaEditando = window.modoEdicion;
-      if (estabaEditando) { window.modoEdicion = false; renderApp(); }
-      setTimeout(() => {
-        const cardElement = document.getElementById('tarjeta-' + index);
-        const botones = cardElement.querySelector('.botones-accion');
-        if(botones) botones.style.display = 'none';
-        
-        const blinker = cardElement.querySelector('.blink');
-        if (blinker) blinker.classList.remove('blink');
-
-        html2canvas(cardElement, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
-          if(botones) botones.style.display = 'flex';
-          if(blinker) blinker.classList.add('blink');
-          if (estabaEditando) { window.modoEdicion = true; renderApp(); }
-          
-          const link = document.createElement('a');
-          link.download = 'Partido_' + String(appData.partidos[index].jornada || 'Partido').replace(/\s+/g, '_') + '.jpg';
-          link.href = canvas.toDataURL('image/jpeg');
-          link.click();
-        });
-      }, 150); 
-    };
   </script>
 
   <!-- SCRIPT PARA INSTALAR LA APP Y CONTROLAR LOS CARTELES (ANDROID / iOS) -->
