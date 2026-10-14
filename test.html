@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   
   <title>Gestión de Equipo - Futsal</title>
@@ -27,7 +27,10 @@
   
   <style>
     :root { --primary: #f8c300; --secondary: #0b2265; --dark: #07153b; --bg: #f4f6fa; --card-bg: #ffffff; --text: #1f2937; --text-muted: #6b7280; }
+    
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    button, input, select, .tab-btn { touch-action: manipulation; }
+    
     body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
     
     header { position: relative; background: linear-gradient(135deg, var(--secondary), var(--dark)); color: #fff; padding: 20px 16px; text-align: center; border-bottom: 4px solid var(--primary); min-height: 80px;}
@@ -43,9 +46,8 @@
     #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
     .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: var(--primary); padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; }
     
-    #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; z-index: 10; }
+    #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; z-index: 10; white-space: nowrap; max-width: 85%; overflow: hidden; text-overflow: ellipsis; }
     
-    /* ESTILOS DE LOS CARTELES DE INSTALAR APP */
     .install-banner { background: #10b981; color: white; text-align: center; padding: 12px; font-weight: 800; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; animation: slideDown 0.5s ease; border-bottom: 2px solid #059669; }
     .ios-banner { background: #3b82f6; border-bottom: 2px solid #2563eb; cursor: default; font-weight: 600; line-height: 1.4; font-size: 0.85rem; }
     @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -94,7 +96,6 @@
     label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
     input[type="text"], input[type="time"], input[type="date"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; margin-top: 2px; }
     
-    /* MEJORAS DE FOTOS Y VISOR (LIGHTBOX) */
     .foto-container { margin-top: 12px; width: 100%; text-align: center; background:#f9fafb; border:1px dashed #d1d5db; padding:6px; border-radius:8px;}
     .foto-img { width: 100%; border-radius: 6px; object-fit: cover; max-height: 250px; display: block; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
     .foto-img:active { transform: scale(0.98); }
@@ -102,10 +103,11 @@
     .btn-upload { flex: 1; text-align: center; background: #f3f4f6; border: 1px dashed #9ca3af; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #4b5563; cursor: pointer; }
     .btn-delete-item { background: #fee2e2; color: #991b1b; border: none; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
     
-    #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
-    #lightbox img { max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .lightbox-close { background: #ef4444; color: white; font-weight: bold; font-size: 1rem; padding: 10px 20px; border-radius: 999px; margin-top: 20px; cursor: pointer; border:none; }
-    
+    #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; overflow: auto; text-align: center; }
+    #lightbox img { margin-top: 70px; margin-bottom: 50px; max-width: 100%; height: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .lightbox-close { position: fixed; top: 15px; right: 15px; background: #ef4444; color: white; border: none; font-weight: bold; font-size: 0.9rem; padding: 8px 16px; border-radius: 999px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;}
+    .lightbox-tip { position: fixed; top: 20px; left: 15px; color: white; font-weight: bold; font-size: 0.8rem; z-index: 10000; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 6px;}
+
     .botones-accion { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;}
     .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; min-width:100px; }
     .btn-wa { background-color: #25d366; }
@@ -145,10 +147,11 @@
 </head>
 <body>
 
-  <!-- VISOR DE FOTOS A PANTALLA COMPLETA -->
-  <div id="lightbox" onclick="window.cerrarFoto()">
+  <!-- VISOR DE FOTOS A PANTALLA COMPLETA CON AVISO DE ESTIRAR -->
+  <div id="lightbox">
+    <div class="lightbox-tip">🔍 Estira para ampliar</div>
+    <button class="lightbox-close" onclick="window.cerrarFoto()">✖ Cerrar</button>
     <img id="lightbox-img" src="">
-    <button class="lightbox-close">✖ Cerrar visor</button>
   </div>
 
   <header id="mainHeader"></header>
@@ -181,8 +184,9 @@
       }
     }, 6000);
 
+    // Importamos también runTransaction para llevar la cuenta de instalaciones de forma segura
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, onDisconnect, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
@@ -200,7 +204,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const equipoURL = urlParams.get('equipo');
     const idEquipoActual = equipoURL ? equipoURL : 'alcorcon26';
-    const appRef = ref(db, 'datos_' + idEquipoActual); 
+    
+    // CARPETAS DE FIREBASE (Aisladas por seguridad)
+    const appRef = ref(db, 'datos_' + idEquipoActual); // Carpeta 1: Partidos
+    const statsRef = ref(db, 'stats_' + idEquipoActual + '/instalaciones'); // Carpeta 2: Contador Instalaciones
     
     let appData = { config: {}, partidos: [] };
     
@@ -209,8 +216,18 @@
     window.currentFase = "1ª Fase";
     window.filtroVista = "proximo"; 
     window.initialLoadDone = false; 
+    
+    // Contadores analíticos
     window.onlineCount = 1; 
+    window.countApp = 0;
+    window.countWeb = 0;
+    window.totalInstalaciones = 0;
+
     const CLAVE_SECRETA = "padresfsf";
+
+    // Detectar si el usuario está desde la App instalada o desde la Web
+    const esApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const tipoConexion = esApp ? 'app' : 'web';
 
     window.safeArray = function(data) {
         if (!data) return [];
@@ -232,7 +249,7 @@
     // Funciones del Visor de Fotos
     window.abrirFoto = function(src) {
         document.getElementById('lightbox-img').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
+        document.getElementById('lightbox').style.display = 'block';
     };
     window.cerrarFoto = function() {
         document.getElementById('lightbox').style.display = 'none';
@@ -251,6 +268,7 @@
     document.addEventListener('click', solicitarWakeLock, { once: true });
     document.addEventListener('touchstart', solicitarWakeLock, { once: true });
 
+    // CARPETA 3: CONEXIONES ONLINE (Registra si es App o Web)
     const connectedRef = ref(db, '.info/connected');
     const myConnId = Date.now() + '_' + Math.floor(Math.random()*1000);
     const myConnectionsRef = ref(db, 'online_' + idEquipoActual + '/' + myConnId);
@@ -258,16 +276,44 @@
     onValue(connectedRef, (snap) => {
       if (snap.val() === true) {
         onDisconnect(myConnectionsRef).remove();
-        set(myConnectionsRef, true);
+        set(myConnectionsRef, tipoConexion); // Guarda 'app' o 'web' en vez de true
       }
     });
 
     const onlineRef = ref(db, 'online_' + idEquipoActual);
     onValue(onlineRef, (snap) => {
-       window.onlineCount = snap.exists() ? Object.keys(snap.val()).length : 0;
-       const badge = document.getElementById('onlineBadge');
-       if (badge) badge.innerText = '👁️ ' + window.onlineCount + ' online';
+       window.countApp = 0;
+       window.countWeb = 0;
+       if (snap.exists()) {
+           const usuarios = snap.val();
+           for(let key in usuarios) {
+               if(usuarios[key] === 'app') window.countApp++;
+               else window.countWeb++;
+           }
+       }
+       window.onlineCount = window.countApp + window.countWeb;
+       renderApp(); // Refresca la cabecera
     });
+
+    // LECTURA DEL CONTADOR DE INSTALACIONES
+    onValue(statsRef, (snap) => {
+       window.totalInstalaciones = snap.val() || 0;
+       renderApp();
+    });
+
+    // FUNCIÓN PARA SUMAR UNA INSTALACIÓN
+    function registrarInstalacion() {
+        runTransaction(statsRef, (currentData) => {
+            return (currentData || 0) + 1;
+        });
+    }
+
+    // SI LA APP SE ABRE Y NO ESTÁ REGISTRADA, SUMAR +1
+    if (esApp && !localStorage.getItem('app_instalada_registrada')) {
+        localStorage.setItem('app_instalada_registrada', 'true');
+        registrarInstalacion();
+    }
+
 
     const datosIniciales = {
       config: { 
@@ -392,7 +438,7 @@
                if(p.duracionDescanso === undefined) p.duracionDescanso = 10;
                if(p.golesL === undefined) p.golesL = "";
                if(p.golesV === undefined) p.golesV = "";
-               if(p.fotoActa === undefined) p.fotoActa = ""; // NUEVO CAMPO
+               if(p.fotoActa === undefined) p.fotoActa = ""; 
             });
 
             const matchIdParam = urlParams.get('match');
@@ -1116,7 +1162,6 @@
       alert("ℹ️ INSTRUCCIONES DEL MARCADOR\n\n1. GOLES: Usa los botones de +1 / -1. Al sumar o restar un gol, la aplicación genera avisos flash automáticos para mantener informada a la afición.\n\n2. CRONÓMETRO: Usa el desplegable '⚙️ Acción partido' para iniciar o finalizar partes.\n\n3. MINUTO A MINUTO: Elige eventos rápidos (⚡) (podrás editar el texto antes de publicarlo) o escribe mensajes a mano (✍️). También puedes editar cualquier apunte con el botón ✏️.\n\n4. ERRORES: Los partidos finalizados están protegidos; si necesitas modificarlos, te pedirá confirmación.");
     };
 
-    // --- FUNCIÓN ADAPTADA PARA FOTO DE EQUIPO Y ACTA ARBITRAL ---
     window.procesarFotoEspecial = function(event, index, campoGuardado) { 
       const file = event.target.files[0];
       if (!file) return;
@@ -1152,14 +1197,20 @@
          });
       }
 
-      let onlineBadgeHtml = '<div id="onlineBadge">👁️ ' + (window.onlineCount || 1) + ' online</div>';
+      let onlineBadgeHtml = '';
+      if (window.modoEdicion) {
+          let instaladas = window.totalInstalaciones || 0;
+          onlineBadgeHtml = '<div id="onlineBadge" style="width:auto; max-width:90%;">👁️ ' + window.onlineCount + ' online (📱 ' + window.countApp + ' | 🌐 ' + window.countWeb + ') • 📲 ' + instaladas + '</div>';
+      } else {
+          onlineBadgeHtml = '<div id="onlineBadge">👁️ ' + window.onlineCount + ' online</div>';
+      }
 
       if (window.modoEdicion) {
         let btnUploadLogo = '<label class="btn-logo">📷 ' + ((appData.config && appData.config.logo) ? 'Cambiar Logo' : 'Añadir Logo') + ' <input type="file" accept="image/*" onchange="window.procesarLogo(event)" style="display:none;"></label>';
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 2.7</div>' +
+          '<div class="version-badge">v. 2.9</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1169,7 +1220,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 2.7</div>' +
+          '<div class="version-badge">v. 2.9</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1178,7 +1229,7 @@
           '</div>';
       } else {
         header.innerHTML = onlineBadgeHtml + 
-          '<div class="version-badge">v. 2.7</div>' +
+          '<div class="version-badge">v. 2.9</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1293,9 +1344,9 @@
                 card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
             }
 
-            // NUEVO SISTEMA DE FOTOS SEPARADAS (PARTIDO Y ACTA)
-            let fotoPartidoHTML = m.foto ? '<div class="foto-container"><span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">📸 Foto del Partido (Toca para ampliar)</span><br><img src="' + m.foto + '" class="foto-img" onclick="window.abrirFoto(\'' + m.foto + '\')" style="cursor:zoom-in; margin-top:4px;"></div>' : "";
-            let fotoActaHTML = m.fotoActa ? '<div class="foto-container" style="background:#eff6ff; border-color:#93c5fd;"><span style="font-size:0.7rem; color:#1e40af; text-transform:uppercase; font-weight:bold;">📝 Acta Arbitral (Toca para ampliar)</span><br><img src="' + m.fotoActa + '" class="foto-img" onclick="window.abrirFoto(\'' + m.fotoActa + '\')" style="cursor:zoom-in; margin-top:4px;"></div>' : "";
+            // FOTOS VISIBLES PARA TODOS CON CLICK PARA AMPLIAR
+            let fotoPartidoHTML = m.foto ? '<div class="foto-container"><span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">📸 Foto del Partido (Toca para ampliar)</span><br><img src="' + m.foto + '" class="foto-img" onclick="window.abrirFoto(\'' + m.foto + '\')"></div>' : "";
+            let fotoActaHTML = m.fotoActa ? '<div class="foto-container" style="background:#eff6ff; border-color:#93c5fd;"><span style="font-size:0.7rem; color:#1e40af; text-transform:uppercase; font-weight:bold;">📝 Acta Arbitral (Toca para ampliar)</span><br><img src="' + m.fotoActa + '" class="foto-img" onclick="window.abrirFoto(\'' + m.fotoActa + '\')"></div>' : "";
             let fotosPublicasCombinadas = fotoPartidoHTML + fotoActaHTML;
             
             let linkMapaHTML = m.lugar || "";
@@ -1457,7 +1508,7 @@
                 '<input type="text" class="team-input" value="' + (m.visitante || '') + '" onchange="window.actualizarDato(' + index + ', \'visitante\', this.value)">' +
                 '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
                   '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
-                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.goleadoresV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                 '</div>' +
               '</div>' + panelDirectoHTML + eventosHTML +
               '<div class="info-grid">' +
@@ -1510,10 +1561,10 @@
                   '</div>' +
                   '<div style="font-weight:bold; font-size:1.1rem;">' + (m.visitante || '') + '</div>' +
                   '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
-                    '<input type="text" placeholder="Goleadores Local" value="' + (m.golesL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                     '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                   '</div>' +
-                '</div>' + panelDirectoHTML + eventosHTML;
+                '</div>' + panelDirectoHTML + eventosHTML + fotosPublicasCombinadas;
             } else {
               let badgeHtml = isLocal ? '<span class="badge badge-local">En Casa</span>' : '<span class="badge badge-visitante">Fuera</span>';
               let presentacionHtml = m.horaPresentacion ? '<div class="info-item"><span class="info-label">⏱️ Presentación</span>' + m.horaPresentacion + '</div>' : '';
@@ -1551,7 +1602,7 @@
              '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
           '</div>' +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.7 - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.9 - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
@@ -1614,7 +1665,6 @@
 
   </script>
 
-  <!-- SCRIPT PARA INSTALAR LA APP Y CONTROLAR LOS CARTELES (ANDROID / iOS) -->
   <script>
     const isIos = () => {
       const userAgent = window.navigator.userAgent.toLowerCase();
