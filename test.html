@@ -10,7 +10,7 @@
   <!-- CONEXIÓN DE LA APP (PWA) -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0b2265">
-  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png">
+  <link rel="apple-touch-icon" href="./logo.png">
   
   <!-- RADAR DE ERRORES GLOBAL -->
   <script>
@@ -45,6 +45,11 @@
     
     #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; }
     
+    /* ESTILOS DE LOS CARTELES DE INSTALAR APP */
+    .install-banner { background: #10b981; color: white; text-align: center; padding: 12px; font-weight: 800; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; animation: slideDown 0.5s ease; border-bottom: 2px solid #059669; }
+    .ios-banner { background: #3b82f6; border-bottom: 2px solid #2563eb; cursor: default; font-weight: 600; line-height: 1.4; font-size: 0.85rem; }
+    @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
     .container { max-width: 600px; margin: 0 auto; padding: 14px; }
     
     .tabs-wrapper { display: flex; overflow-x: auto; background: var(--card-bg); margin-bottom: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 6px; gap: 6px; align-items: center; }
@@ -135,6 +140,18 @@
 <body>
 
   <header id="mainHeader"></header>
+  
+  <!-- BANNER MÁGICO DE INSTALACIÓN (ANDROID) -->
+  <div id="installBanner" class="install-banner" onclick="window.instalarPWA()">
+    📲 Toca aquí para INSTALAR LA APP en tu móvil
+  </div>
+
+  <!-- BANNER MANUAL PARA (iOS / APPLE) -->
+  <div id="iosInstallBanner" class="install-banner ios-banner" onclick="this.style.display='none'">
+    🍎 <b>Para instalar la App en iPhone/iPad:</b><br>
+    Toca el botón de Compartir (cuadrado con flecha) abajo en Safari y elige <b>"Añadir a la pantalla de inicio"</b>. <br><span style="font-size:0.7rem; font-weight:normal; opacity:0.8;">(Toca para cerrar este aviso)</span>
+  </div>
+
   <div id="status">Conectando con Firebase... Espera por favor.</div>
   
   <div class="container">
@@ -853,7 +870,7 @@
         }
       } else if (opcion === "2") {
         if(confirm("¿Seguro que quieres reiniciar el tiempo y el estado del partido a 'Sin empezar'?")) {
-           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = m.timerDescansoInicio = null;
+           m.estadoPeriodo = ""; m.timerActivo = false; m.tiempoAcumulado = 0; m.horaReal = ""; m.horaFinReal = ""; m.timerDescansoInicio = null;
            guardarDatos();
            alert("✅ Tiempo reiniciado.");
         }
@@ -1089,7 +1106,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
-          '<div class="version-badge">v. 2.2</div>' +
+          '<div class="version-badge">v. 2.4</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1099,7 +1116,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = '<div id="onlineBadge">👁️ Cargando...</div>' +
-          '<div class="version-badge">v. 2.2</div>' +
+          '<div class="version-badge">v. 2.4</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1107,7 +1124,7 @@
              '<button onclick="window.toggleEdicion()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">Salir</button>' +
           '</div>';
       } else {
-        header.innerHTML = '<div class="version-badge">v. 2.2</div>' +
+        header.innerHTML = '<div class="version-badge">v. 2.4</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1405,8 +1422,8 @@
                   '</div>' +
                   '<div style="font-weight:bold; font-size:1.1rem;">' + (m.visitante || '') + '</div>' +
                   '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
-                    '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
-                    '<input type="text" placeholder="Goleadores Visitante" value="' + (m.goleadoresV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Local" value="' + (m.golesL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                   '</div>' +
                 '</div>' + panelDirectoHTML + eventosHTML;
             } else {
@@ -1446,7 +1463,7 @@
              '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
           '</div>' +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.2 - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.4 - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
@@ -1619,13 +1636,48 @@
     };
   </script>
 
-  <!-- SCRIPT PARA INSTALAR LA APP (PWA) -->
+  <!-- SCRIPT PARA INSTALAR LA APP Y CONTROLAR LOS CARTELES (ANDROID / iOS) -->
   <script>
+    // 1. Funciones de Detección
+    const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isMac = /macintosh|mac os x/i.test(userAgent) && window.navigator.maxTouchPoints > 1; // Para iPads modernos
+      return /iphone|ipad|ipod/.test(userAgent) || isMac;
+    };
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    // 2. Lógica para iOS (Cartel Manual)
+    if (isIos() && !isInStandaloneMode()) {
+       document.getElementById('iosInstallBanner').style.display = 'block';
+    }
+
+    // 3. Lógica para Android (Cartel Automático)
+    let pwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      pwaPrompt = e;
+      // Mostrar solo si no es iOS
+      if (!isIos()) {
+         document.getElementById('installBanner').style.display = 'block';
+      }
+    });
+
+    window.instalarPWA = function() {
+      if (pwaPrompt) {
+        pwaPrompt.prompt();
+        pwaPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            document.getElementById('installBanner').style.display = 'none';
+          }
+          pwaPrompt = null;
+        });
+      }
+    };
+
+    // 4. Registro del motor invisible
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(registration => {
-          console.log('ServiceWorker registrado con éxito');
-        }).catch(err => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
           console.log('Fallo al registrar ServiceWorker: ', err);
         });
       });
