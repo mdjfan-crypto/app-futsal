@@ -1176,4 +1176,615 @@
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
       
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const enlaceDirectoWA = '\n📱 *Ir al directo:* ' + appUrl;
+
+      let linkMapaWA = "";
+      let strLugar = String(m.lugar || "").toLowerCase();
+      
+      if (m.lugar && strLugar.indexOf("pendiente") === -1 && strLugar.indexOf("confirmar") === -1) {
+        let customLink = (m.linkMapa && String(m.linkMapa).trim() !== "") ? String(m.linkMapa).trim() : "";
+        if (customLink.indexOf("intent://") === 0) {
+           let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
+           customLink = fallbackMatch ? decodeURIComponent(fallbackMatch[1]) : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
+        }
+        let targetUrl = customLink ? customLink : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
+        let wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(m.lugar);
+        
+        linkMapaWA = '\n📍 *' + m.lugar + '*';
+        if (m.mostrarMaps !== false) linkMapaWA += '\n🗺️ Maps: ' + targetUrl;
+        if (m.mostrarWaze !== false) linkMapaWA += '\n🚙 Waze: ' + wazeUrl;
+      } else {
+        linkMapaWA = m.lugar ? '\n📍 *' + m.lugar + '*' : "";
+      }
+
+      let estadoTxt = "";
+      if (m.estadoPeriodo === 'Final') { 
+         let finInfo = m.horaFinReal ? ' (Acabó a las ' + m.horaFinReal + ')' : '';
+         estadoTxt = '✅ *RESULTADO FINAL*' + finInfo + ' ✅'; 
+      } 
+      else if (m.estadoPeriodo && m.estadoPeriodo !== 'Sin empezar') {
+         let totalSecs = m.tiempoAcumulado || 0;
+         if (m.timerActivo) { 
+            let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+            if (m.estadoPeriodo === 'Descanso') { totalSecs = Math.max(0, totalSecs - diff); }
+            else { totalSecs += diff; }
+         }
+         let mins = Math.floor(totalSecs / 60);
+         let secs = totalSecs % 60;
+         
+         let minTxt = (m.estadoPeriodo === '1ª Parte' || m.estadoPeriodo === '2ª Parte') ? ' (Min ' + mins.toString().padStart(2,'0') + ':' + secs.toString().padStart(2,'0') + ')' : '';
+         let inicioWA = m.horaReal ? ' (Inició a las ' + m.horaReal + ')' : '';
+         estadoTxt = '🔴 *EN DIRECTO: ' + m.estadoPeriodo + minTxt + inicioWA + '* 🔴';
+      } 
+      else if (m.golesL !== "" && m.golesV !== "") { estadoTxt = "🟡 *RESULTADO FINAL* 🟡"; } 
+      else { estadoTxt = "🟡 *PRÓXIMO PARTIDO* 🟡"; }
+
+      let goleadoresWA = "";
+      if (m.goleadoresL || m.goleadoresV) {
+         if (m.goleadoresL) goleadoresWA += '\n🏠 ' + m.goleadoresL;
+         if (m.goleadoresV) goleadoresWA += '\n✈️ ' + m.goleadoresV;
+         goleadoresWA += "\n";
+      }
+
+      let fechaWA = m.fecha ? '\n📅 *Fecha:* ' + window.formatearFecha(m.fecha) : "\n📅 *Fecha:* Sin fijar";
+      let horaWA = '\n⏰ *Partido:* ' + (m.hora || 'Por confirmar');
+      let presentacionWA = m.horaPresentacion ? '\n⏱️ *Cita:* ' + m.horaPresentacion : "";
+
+      let vL = m.golesL !== "" ? '*' + m.golesL + '*' : "";
+      let vV = m.golesV !== "" ? '*' + m.golesV + '*' : "";
+      const texto = estadoTxt + '\n🏆 *' + (m.fase || '') + ' - ' + (m.jornada || '') + '*\n⚽ ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n' + goleadoresWA + fechaWA + horaWA + presentacionWA + linkMapaWA + '\n' + enlaceDirectoWA + '\n\n' + animo;
+      
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(texto), '_blank');
+    };
+
+    window.descargarImagen = function(index) {
+      const estabaEditando = window.modoEdicion;
+      if (estabaEditando) { window.modoEdicion = false; renderApp(); }
+      setTimeout(() => {
+        const cardElement = document.getElementById('tarjeta-' + index);
+        const botones = cardElement.querySelector('.botones-accion');
+        if(botones) botones.style.display = 'none';
+        
+        const blinker = cardElement.querySelector('.blink');
+        if (blinker) blinker.classList.remove('blink');
+
+        html2canvas(cardElement, { backgroundColor: '#ffffff', scale: 2 }).then(canvas => {
+          if(botones) botones.style.display = 'flex';
+          if(blinker) blinker.classList.add('blink');
+          if (estabaEditando) { window.modoEdicion = true; renderApp(); }
+          
+          const link = document.createElement('a');
+          link.download = 'Partido_' + String(appData.partidos[index].jornada || 'Partido').replace(/\s+/g, '_') + '.jpg';
+          link.href = canvas.toDataURL('image/jpeg');
+          link.click();
+        });
+      }, 150); 
+    };
+
+    function renderApp() {
+      const header = document.getElementById('mainHeader');
+      let logoRender = (appData.config && appData.config.logo) ? '<img src="' + appData.config.logo + '" class="header-logo">' : '';
+      let animoValor = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : "¡Vamos EQUIPO! 💛";
+      let equipoNombre = (appData.config && appData.config.equipo) ? appData.config.equipo : "NUEVO EQUIPO";
+      let categoriaFase = (appData.config && appData.config.categoria) ? appData.config.categoria : "";
+
+      let opcionesRapidasHTML = '<option value="">⚡ Rápido...</option>';
+      if (appData.config && appData.config.mensajesRapidos) {
+         appData.config.mensajesRapidos.forEach(msg => {
+            let textoCorto = String(msg).length > 25 ? String(msg).substring(0, 25) + "..." : String(msg);
+            opcionesRapidasHTML += '<option value="' + msg + '">' + textoCorto + '</option>';
+         });
+      }
+
+      let onlineBadgeHtml = '';
+      if (window.modoEdicion) {
+          let instaladas = window.totalInstalaciones || 0;
+          onlineBadgeHtml = '<div id="onlineBadge" style="width:auto; max-width:90%;">👁️ ' + window.onlineCount + ' online (📱 ' + window.countApp + ' | 🌐 ' + window.countWeb + ') • 📲 ' + instaladas + '</div>';
+      } else {
+          onlineBadgeHtml = '<div id="onlineBadge">👁️ ' + window.onlineCount + ' online</div>';
+      }
+
+      if (window.modoEdicion) {
+        let btnUploadLogo = '<label class="btn-logo">📷 ' + ((appData.config && appData.config.logo) ? 'Cambiar Logo' : 'Añadir Logo') + ' <input type="file" accept="image/*" onchange="window.procesarLogo(event)" style="display:none;"></label>';
+        let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
+
+        header.innerHTML = onlineBadgeHtml +
+          '<div class="version-badge">v. 2.9.1</div>' +
+          '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
+          '<div class="header-edit">' +
+            '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
+            '<input type="text" value="' + categoriaFase + '" onchange="window.actualizarConfig(\'categoria\', this.value)" placeholder="Fase / Categoría">' +
+            '<input type="text" value="' + animoValor + '" onchange="window.actualizarConfig(\'mensajeAnimo\', this.value)" placeholder="Mensaje para WhatsApp" style="font-weight:normal; font-style:italic; border-color: rgba(255,255,255,0.3); margin-top:4px;">' +
+          '</div>' +
+          '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
+      } else if (window.modoMarcador !== null) {
+        header.innerHTML = onlineBadgeHtml +
+          '<div class="version-badge">v. 2.9.1</div>' +
+          '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
+          '<p>Control de marcador de partido.</p>' +
+          '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
+             '<button onclick="window.instruccionesDelegado()" style="background:#3b82f6; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">ℹ️ Instrucciones</button>' +
+             '<button onclick="window.toggleEdicion()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">Salir</button>' +
+          '</div>';
+      } else {
+        header.innerHTML = onlineBadgeHtml + 
+          '<div class="version-badge">v. 2.9.1</div>' +
+          logoRender +
+          '<h1>' + equipoNombre + '</h1>' +
+          '<p>' + categoriaFase + '</p>' +
+          '<button id="btnLock" onclick="window.toggleEdicion()">🔒</button>';
+      }
+
+      const tabsMenu = document.getElementById('tabsMenu');
+      if (window.modoMarcador === null) {
+          let tabsHTML = '<div class="tabs-wrapper">';
+          if (appData.config && appData.config.fases) {
+             appData.config.fases.forEach(f => {
+                let actClass = (f === window.currentFase) ? 'active' : '';
+                tabsHTML += '<button class="tab-btn ' + actClass + '" onclick="window.cambiarFase(\'' + f + '\')">' + f + '</button>';
+             });
+          }
+          if (window.modoEdicion) {
+             tabsHTML += '<button class="tab-btn action-tab" onclick="window.nuevaFase()">➕ Nueva Fase</button>' +
+             '<button class="tab-btn edit-tab" onclick="window.moverFase(-1)" title="Mover izquierda">⬅️</button>' +
+             '<button class="tab-btn edit-tab" onclick="window.moverFase(1)" title="Mover derecha">➡️</button>' +
+             '<button class="tab-btn edit-tab" onclick="window.renombrarFase(\'' + window.currentFase + '\')" title="Renombrar pestaña">✏️</button>' +
+             '<button class="tab-btn edit-tab" onclick="window.borrarFase(\'' + window.currentFase + '\')" title="Borrar pestaña" style="color:#991b1b;">🗑️</button>';
+          }
+          tabsHTML += '</div>';
+          tabsMenu.innerHTML = tabsHTML;
+      } else {
+          tabsMenu.innerHTML = '';
+      }
+
+      const filterMenu = document.getElementById('filterMenu');
+      if (!window.modoEdicion && window.modoMarcador === null) {
+        let actProximo = window.filtroVista === 'proximo' ? 'active' : '';
+        let actPendientes = window.filtroVista === 'pendientes' ? 'active' : '';
+        let actTodos = window.filtroVista === 'todos' ? 'active' : '';
+        filterMenu.innerHTML = '<div class="filter-wrapper">' +
+            '<button class="filter-btn ' + actProximo + '" onclick="window.setFiltro(\'proximo\')">🔥 Próximo</button>' +
+            '<button class="filter-btn ' + actPendientes + '" onclick="window.setFiltro(\'pendientes\')">⏳ Pendientes</button>' +
+            '<button class="filter-btn ' + actTodos + '" onclick="window.setFiltro(\'todos\')">📅 Todos</button>' +
+          '</div>';
+      } else { filterMenu.innerHTML = ''; }
+
+      let indiceProximo = -1;
+      if (appData.partidos) {
+          for (let i = 0; i < appData.partidos.length; i++) {
+             let m = appData.partidos[i];
+             if ((m.fase || "1ª Fase") === window.currentFase) {
+                if (!window.modoEdicion && window.modoMarcador !== i && m.oculto) continue; 
+                let golesL_val = m.golesL !== undefined ? m.golesL : "";
+                let golesV_val = m.golesV !== undefined ? m.golesV : "";
+                let isFinalizado = m.estadoPeriodo === 'Final' || (golesL_val !== "" && golesV_val !== "" && !m.estadoPeriodo);
+                if (!isFinalizado) { indiceProximo = i; break; }
+             }
+          }
+      }
+
+      const container = document.getElementById('matchList');
+      container.innerHTML = '';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+
+      let partidosMostrados = 0;
+
+      if (appData.partidos) {
+          appData.partidos.forEach((m, index) => {
+            let isFinalizado = m.estadoPeriodo === 'Final' || (m.golesL !== "" && m.golesV !== "" && !m.estadoPeriodo);
+
+            if (window.modoMarcador !== null) {
+                if (index !== window.modoMarcador) return; 
+            } else {
+                let matchFase = m.fase || "1ª Fase";
+                if (matchFase !== window.currentFase) return; 
+                if (!window.modoEdicion && m.oculto) return;
+                
+                if (!window.modoEdicion && isFinalizado && window.filtroVista === 'proximo') return;
+                
+                let isProximo = (index === indiceProximo);
+
+                if (!window.modoEdicion) {
+                   if (window.filtroVista === 'proximo' && !isProximo) return;
+                   if (window.filtroVista === 'pendientes' && isFinalizado) return;
+                }
+            }
+
+            partidosMostrados++;
+
+            const eqNombre = String(equipoNombre).toUpperCase().split(" ")[0] || "EQUIPO";
+            let strLocal = String(m.local || "Equipo").toUpperCase();
+            const isLocal = strLocal.indexOf(eqNombre) !== -1 || m.local === "NUEVO EQUIPO";
+            const card = document.createElement('div');
+            let cardClass = isLocal ? 'local' : 'visitante';
+            card.className = 'card ' + cardClass;
+            card.id = 'tarjeta-' + index; 
+            
+            if (window.modoEdicion) {
+                if (isFinalizado) {
+                    card.style.order = '2';
+                    card.style.opacity = '0.7'; 
+                } else {
+                    card.style.order = '1';
+                }
+                if (m.oculto) {
+                    card.style.border = '2px dashed #9ca3af';
+                    card.style.borderLeft = '5px solid #9ca3af';
+                }
+            } else {
+                card.style.order = '1'; 
+            }
+            
+            let nextBannerHTML = '';
+            if (index === indiceProximo && !window.modoEdicion && window.modoMarcador === null && !m.oculto) {
+                nextBannerHTML = '<div class="next-match-banner">⭐ Próximo Partido ⭐</div>';
+                card.style.borderLeftColor = '#10b981'; 
+                card.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
+            }
+
+            // FOTOS VISIBLES PARA TODOS CON CLICK PARA AMPLIAR
+            let fotoPartidoHTML = m.foto ? '<div class="foto-container"><span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:bold;">📸 Foto del Partido (Toca para ampliar)</span><br><img src="' + m.foto + '" class="foto-img" onclick="window.abrirFoto(\'' + m.foto + '\')"></div>' : "";
+            let fotoActaHTML = m.fotoActa ? '<div class="foto-container" style="background:#eff6ff; border-color:#93c5fd;"><span style="font-size:0.7rem; color:#1e40af; text-transform:uppercase; font-weight:bold;">📝 Acta Arbitral (Toca para ampliar)</span><br><img src="' + m.fotoActa + '" class="foto-img" onclick="window.abrirFoto(\'' + m.fotoActa + '\')"></div>' : "";
+            let fotosPublicasCombinadas = fotoPartidoHTML + fotoActaHTML;
+            
+            let linkMapaHTML = m.lugar || "";
+            let strLugar = String(m.lugar || "").toLowerCase();
+            
+            if (m.lugar && strLugar.indexOf("pendiente") === -1 && strLugar.indexOf("confirmar") === -1) {
+              let customLink = (m.linkMapa && String(m.linkMapa).trim() !== "") ? String(m.linkMapa).trim() : "";
+              if (customLink.indexOf("intent://") === 0) {
+                 let fallbackMatch = customLink.match(/browser_fallback_url=([^;]+)/);
+                 customLink = fallbackMatch ? decodeURIComponent(fallbackMatch[1]) : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
+              }
+              let targetUrl = customLink ? customLink : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(m.lugar);
+              let wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(m.lugar);
+              
+              let btnMaps = (m.mostrarMaps !== false) ? '<a href="' + targetUrl + '" target="_blank" style="background:#e5e7eb; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#1f2937; font-weight:bold;">🗺️ Maps</a>' : '';
+              let btnWaze = (m.mostrarWaze !== false) ? '<a href="' + wazeUrl + '" target="_blank" style="background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:0.75rem; text-decoration:none; color:#0369a1; font-weight:bold;">🚙 Waze</a>' : '';
+              
+              let botonesDiv = (btnMaps || btnWaze) ? '<div style="display:flex; gap:6px;">' + btnMaps + btnWaze + '</div>' : '';
+              linkMapaHTML = '<div style="font-weight:600; color:var(--text); margin-bottom:4px;">' + m.lugar + '</div>' + botonesDiv;
+            }
+
+            let liveBadgeHTML = '';
+            if (!window.modoEdicion && window.modoMarcador === null && m.estadoPeriodo && m.estadoPeriodo !== "") {
+              let extraClass = m.estadoPeriodo === 'Final' ? 'final' : (m.estadoPeriodo === 'Descanso' ? 'descanso' : (!m.timerActivo ? 'paused' : ''));
+              liveBadgeHTML = '<div class="live-badge ' + extraClass + '" id="timer-display-pub-' + index + '">Cargando...</div>';
+            }
+
+            let goleadoresPublicoHTML = '';
+            if (!window.modoEdicion && window.modoMarcador === null && (m.goleadoresL || m.goleadoresV)) {
+              goleadoresPublicoHTML = '<div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-top:-8px; margin-bottom:12px; padding:0 4px; line-height:1.2;">' +
+                 '<div style="flex:1; text-align:left;">' + (m.goleadoresL ? '⚽ ' + m.goleadoresL : '') + '</div>' +
+                 '<div style="flex:1; text-align:right;">' + (m.goleadoresV ? m.goleadoresV + ' ⚽' : '') + '</div>' +
+               '</div>';
+            }
+
+            let isEditable = (window.modoEdicion || window.modoMarcador === index);
+            
+            let adminEventosTools = '';
+            if (isEditable) {
+                adminEventosTools = '<div style="display:flex; gap:4px;">' +
+                  '<select onchange="window.agregarEventoRapido(' + index + ', this)" style="padding:2px 4px; font-size:0.7rem; border-radius:4px; border:1px solid #d1d5db; background:#f3f4f6; color:var(--text); font-weight:bold; max-width:120px;">' +
+                    opcionesRapidasHTML +
+                  '</select>' +
+                  '<button onclick="window.agregarEventoManual(' + index + ')" style="background:#e5e7eb; border:none; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Añadir evento manual">✍️ Escribir</button>' +
+                '</div>';
+            }
+
+            let listaEventosHtml = '<div style="color:#9ca3af; font-style:italic; text-align:center;">No hay eventos registrados...</div>';
+            if (m.eventos && m.eventos.length > 0) {
+                let itemsArr = [];
+                m.eventos.forEach(function(ev) {
+                    let minHtml = ev.min !== '-' ? ' | ⏱️ ' + ev.min : '';
+                    let horaHtml = ev.hora ? ' | ⌚ ' + ev.hora : '';
+                    let textoWeb = String(ev.texto || "").replace(/\*/g, ''); 
+                    let btnWaBorrar = '';
+                    if (isEditable) {
+                        btnWaBorrar = '<div style="display:flex; gap:4px; align-items:center;">' +
+                          '<button onclick="window.editarEvento(' + index + ', \'' + ev.id + '\')" style="background:#fef3c7; color:#b45309; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Editar apunte">✏️</button>' +
+                          '<button onclick="window.compartirFlashWA(' + index + ', \'' + ev.id + '\')" style="background:#25d366; color:white; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; font-weight:bold; cursor:pointer;" title="Aviso Rápido a WhatsApp">💬 WA</button>' +
+                          '<button onclick="window.borrarEvento(' + index + ', \'' + ev.id + '\')" style="background:#fee2e2; color:#ef4444; border:none; border-radius:4px; padding:6px 8px; font-size:0.7rem; cursor:pointer;" title="Borrar evento">✖</button>' +
+                        '</div>';
+                    }
+                    itemsArr.push('<div class="log-item">' +
+                       '<div style="flex:1; line-height:1.4;">' +
+                         '<span class="log-time" style="color:var(--text-muted); font-size:0.7rem;">[' + ev.periodo + minHtml + horaHtml + ']</span><br>' +
+                         '<span style="font-weight:600; color:var(--text); white-space: pre-line;">' + textoWeb + '</span>' +
+                       '</div>' + btnWaBorrar + 
+                    '</div>');
+                });
+                listaEventosHtml = itemsArr.join('');
+            }
+
+            let eventosHTML = '<div class="log-container">' +
+                '<div class="log-header" style="flex-wrap:wrap; gap:4px;"><span>📝 MINUTO A MINUTO</span>' + adminEventosTools + '</div>' +
+                '<div class="log-list">' + listaEventosHtml + '</div>' +
+              '</div>';
+
+            let playPauseBtnColor = m.timerActivo ? '#fee2e2' : '#d1fae5';
+            let playPauseBtnTextCol = m.timerActivo ? '#991b1b' : '#065f46';
+            let playPauseText = m.timerActivo ? '⏸️ Parar' : '▶️ Play';
+
+            let panelDirectoHTML = '<div class="timer-admin-box">' +
+              '<div style="font-size:0.7rem; font-weight:800; color:#6b7280; text-align:center; display:flex; justify-content:space-between; margin-bottom: 6px;">' +
+                 '<span>PANEL DE DIRECTO (Estado: ' + (m.estadoPeriodo || 'Sin empezar') + ')</span>' +
+                 '<span><input type="time" value="' + (m.horaReal || '') + '" onchange="window.actualizarDato(' + index + ', \'horaReal\', this.value)" style="width:70px; padding:2px; height:auto; margin:0;" title="Hora Inicio Real"></span>' +
+              '</div>' +
+              '<div style="display:flex; justify-content:center; gap:12px; margin-bottom:8px;">' +
+                 '<label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Min/Parte: <input type="number" value="' + (m.duracionParte || 25) + '" onchange="window.actualizarDato(' + index + ', \'duracionParte\', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>' +
+                 '<label style="font-size:0.75rem; color:#4b5563; font-weight:bold;">Descanso: <input type="number" value="' + (m.duracionDescanso || 10) + '" onchange="window.actualizarDato(' + index + ', \'duracionDescanso\', this.value)" style="width:45px; padding:2px; text-align:center; border:1px solid #d1d5db; border-radius:4px;"></label>' +
+              '</div>' +
+              '<div class="timer-admin-row">' +
+                '<select onchange="window.cambiarEstadoPeriodo(' + index + ', this.value); this.value=\'\';" style="width:160px;">' +
+                  '<option value="">⚙️ Acción partido...</option>' +
+                  '<option value="1ª Parte">▶️ Iniciar 1ª Parte</option>' +
+                  '<option value="Descanso">⏸️ Finalizar 1ª Parte</option>' +
+                  '<option value="2ª Parte">▶️ Iniciar 2ª Parte</option>' +
+                  '<option value="Final">⏹️ Finalizar Partido</option>' +
+                '</select>' +
+                '<button onclick="window.toggleTimer(' + index + ')" style="background:' + playPauseBtnColor + '; color:' + playPauseBtnTextCol + ';">' + playPauseText + '</button>' +
+                '<button onclick="window.resetCrono(' + index + ')" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:4px; padding:4px 6px; font-weight:bold; font-size:0.75rem;" title="Poner a cero el cronómetro actual">🔄 00:00</button>' +
+                '<span id="timer-display-admin-' + index + '" style="font-weight:900; font-variant-numeric: tabular-nums; width:45px; text-align:right;">00:00</span>' +
+              '</div>' +
+            '</div>';
+
+            let btnTelegramHTML = (appData.config && appData.config.telegramToken && String(appData.config.telegramToken).trim() !== "" && appData.config.telegramChatId && String(appData.config.telegramChatId).trim() !== "") 
+                ? '<button class="btn-action btn-tg" onclick="window.enviarResumenTelegram(' + index + ')">🤖 Resumen TG</button>' : '';
+
+            let cuerpoHTML = "";
+            let valGolesL = m.golesL !== undefined ? m.golesL : '';
+            let valGolesV = m.golesV !== undefined ? m.golesV : '';
+            let textGolesL = valGolesL !== "" ? valGolesL : "-";
+            let textGolesV = valGolesV !== "" ? valGolesV : "-";
+            let chkMaps = m.mostrarMaps !== false ? 'checked' : '';
+            let chkWaze = m.mostrarWaze !== false ? 'checked' : '';
+
+            if (window.modoEdicion) {
+              let btnOculto = m.oculto ? '<button onclick="window.actualizarDato(' + index + ', \'oculto\', false)" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; font-size:0.75rem; font-weight:bold; cursor:pointer;" title="El partido está oculto al público. Pulsa para hacerlo visible.">🙈 Oculto</button>' : '<button onclick="window.actualizarDato(' + index + ', \'oculto\', true)" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; border-radius:4px; padding:2px 6px; font-size:0.75rem; font-weight:bold; cursor:pointer;" title="El partido es visible. Pulsa para ocultarlo.">👁️ Visible</button>';
+              
+              // PANEL DE FOTOS PARA ADMIN (DOS BOTONES SEPARADOS)
+              let btnDeleteFoto = m.foto ? '<button class="btn-delete-item" onclick="window.actualizarDato(' + index + ', \'foto\', \'\')" title="Borrar foto del equipo/partido">🗑️</button>' : '';
+              let btnDeleteActa = m.fotoActa ? '<button class="btn-delete-item" onclick="window.actualizarDato(' + index + ', \'fotoActa\', \'\')" title="Borrar Acta">🗑️</button>' : '';
+              
+              let panelFotosAdmin = '<div style="display:flex; flex-direction:column; gap:8px; margin-top:12px; background:#f9fafb; padding:10px; border-radius:8px; border:1px dashed #d1d5db;">' +
+                 '<div style="font-size:0.75rem; font-weight:bold; color:var(--text-muted); text-transform:uppercase;">📷 Archivos del Partido</div>' +
+                 '<div class="foto-uploader" style="margin-top:0;">' +
+                   '<input type="file" id="upload-foto-' + index + '" accept="image/*" onchange="window.procesarFotoEspecial(event, ' + index + ', \'foto\')" style="display:none;">' +
+                   '<button class="btn-upload" onclick="document.getElementById(\'upload-foto-' + index + '\').click()">📸 ' + (m.foto ? 'Cambiar Foto Partido' : 'Añadir Foto Partido') + '</button>' +
+                   btnDeleteFoto +
+                 '</div>' +
+                 '<div class="foto-uploader" style="margin-top:0;">' +
+                   '<input type="file" id="upload-acta-' + index + '" accept="image/*" onchange="window.procesarFotoEspecial(event, ' + index + ', \'fotoActa\')" style="display:none;">' +
+                   '<button class="btn-upload" onclick="document.getElementById(\'upload-acta-' + index + '\').click()" style="background:#eff6ff; border-color:#93c5fd; color:#1e40af;">📝 ' + (m.fotoActa ? 'Cambiar Acta' : 'Añadir Acta') + '</button>' +
+                   btnDeleteActa +
+                 '</div>' +
+              '</div>';
+
+              let avisoFinalizadoAdmin = isFinalizado ? '<div style="background:#d1fae5; color:#047857; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:bold; text-align:center; margin-bottom:8px;">✅ Partido Finalizado y Protegido</div>' : '';
+
+              cuerpoHTML = avisoFinalizadoAdmin + '<div class="card-header">' +
+                '<div style="display:flex; gap:5px; align-items:center;">' +
+                  '<input type="text" class="jornada-edit" value="' + (m.jornada || '') + '" onchange="window.actualizarDato(' + index + ', \'jornada\', this.value)" style="width: 120px;">' + btnOculto +
+                '</div>' +
+                '<div>' +
+                  '<button class="btn-delete-item" style="background:#fef3c7; color:#92400e; margin-right:4px;" onclick="window.resetearPartido(' + index + ')">🔄 Opciones</button>' +
+                  '<button class="btn-delete-item" onclick="window.borrarPartido(' + index + ')">🗑️ Borrar</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="vs-container" style="flex-direction: column; gap:10px;">' +
+                '<input type="text" class="team-input" value="' + (m.local || '') + '" onchange="window.actualizarDato(' + index + ', \'local\', this.value)">' +
+                '<div class="score-inputs">' +
+                  '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'L\')" title="Restar gol (-1)">-1</button>' +
+                  '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'L\')">+1</button>' +
+                  '<input type="number" min="0" value="' + valGolesL + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)">' +
+                  '<span>VS</span>' +
+                  '<input type="number" min="0" value="' + valGolesV + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)">' +
+                  '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'V\')">+1</button>' +
+                  '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'V\')" title="Restar gol (-1)">-1</button>' +
+                '</div>' +
+                '<input type="text" class="team-input" value="' + (m.visitante || '') + '" onchange="window.actualizarDato(' + index + ', \'visitante\', this.value)">' +
+                '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
+                  '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                '</div>' +
+              '</div>' + panelDirectoHTML + eventosHTML +
+              '<div class="info-grid">' +
+                '<div><label>Fecha</label><input type="date" value="' + (m.fecha || '') + '" onchange="window.actualizarDato(' + index + ', \'fecha\', this.value)"></div>' +
+                '<div><label>Hora Partido</label><input type="time" value="' + (m.hora || '') + '" onchange="window.actualizarDato(' + index + ', \'hora\', this.value)"></div>' +
+                '<div><label>Presentación</label><input type="time" value="' + (m.horaPresentacion || '') + '" onchange="window.actualizarDato(' + index + ', \'horaPresentacion\', this.value)" title="Opcional"></div>' +
+                '<div class="info-full">' +
+                  '<label>Pabellón / Dirección</label>' +
+                  '<div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">' +
+                    '<div style="display:flex; gap:4px;">' +
+                      '<input type="text" id="lugar-input-' + index + '" value="' + (m.lugar || '') + '" onchange="window.actualizarDato(' + index + ', \'lugar\', this.value)" placeholder="Nombre (Ej: Pabellón Los Cantos)" style="flex:1; margin-top:0;">' +
+                      '<button type="button" onclick="let lugar = document.getElementById(\'lugar-input-' + index + '\').value; if(lugar) window.open(\'https://www.google.com/maps/search/?api=1&query=\' + encodeURIComponent(lugar), \'_blank\'); else alert(\'Escribe primero el nombre del pabellón para buscarlo.\');" style="background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-size:1rem; padding: 0 8px; font-weight:bold; color:#4b5563;">🗺️ Buscar</button>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:4px;">' +
+                      '<input type="text" value="' + (m.linkMapa || '') + '" onchange="window.actualizarDato(' + index + ', \'linkMapa\', this.value)" placeholder="Enlace Maps" style="flex:1; margin-top:0;">' +
+                      '<button type="button" onclick="let link = this.previousElementSibling.value; if(link) window.open(link, \'_blank\'); else alert(\'Pega primero un enlace para probarlo.\');" style="background:#e5e7eb; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-size:1rem; padding: 0 8px; font-weight:bold; color:#4b5563;">🔎 Probar</button>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div style="display:flex; align-items:center; gap:12px; margin-top:8px; background:#f9fafb; padding:8px; border-radius:6px; border:1px dashed #d1d5db;">' +
+                    '<span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Enlaces WA:</span>' +
+                    '<label style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:700; color:var(--text); display:flex; align-items:center; gap:4px;"><input type="checkbox" ' + chkMaps + ' onchange="window.actualizarDato(' + index + ', \'mostrarMaps\', this.checked)"> Maps 🗺️</label>' +
+                    '<label style="margin:0; font-size:0.8rem; cursor:pointer; font-weight:700; color:var(--text); display:flex; align-items:center; gap:4px;"><input type="checkbox" ' + chkWaze + ' onchange="window.actualizarDato(' + index + ', \'mostrarWaze\', this.checked)"> Waze 🚙</label>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="info-full" style="background:#fffbeb; padding:8px; border:1px dashed #f59e0b; border-radius:6px;">' +
+                  '<div style="display:flex; justify-content:space-between;"><label style="color:#b45309;">🔑 PIN Delegado:</label></div>' +
+                  '<div style="display:flex; gap:6px; margin-top:4px;">' +
+                     '<input type="text" placeholder="Ej: 1234" value="' + (m.pinMarcador || '') + '" onchange="window.actualizarDato(' + index + ', \'pinMarcador\', this.value)" style="flex:0 0 100px; text-align:center; font-weight:bold; border-color:#fcd34d;">' +
+                     '<span style="font-size:0.7rem; color:#92400e; align-self:center;">Permite que otro padre entre al candado para controlar ESE partido sin poder borrar nada.</span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' + fotosPublicasCombinadas + panelFotosAdmin;
+
+            } else if (window.modoMarcador === index) {
+              let avisoFinalizadoDelegado = isFinalizado ? '<div style="background:#d1fae5; color:#047857; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:bold; text-align:center; margin-bottom:8px;">✅ Partido Finalizado y Protegido</div>' : '';
+              cuerpoHTML = avisoFinalizadoDelegado + '<div class="card-header">' +
+                  '<span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">' + (m.jornada || '') + ' - MODO DELEGADO</span>' +
+                  '<button class="btn-delete-item" style="background:#fef3c7; color:#92400e; padding:4px 8px;" onclick="window.resetearPartido(' + index + ')">🔄 Opciones</button>' +
+                '</div>' +
+                '<div class="vs-container" style="flex-direction: column; gap:10px;">' +
+                  '<div style="font-weight:bold; font-size:1.1rem;">' + (m.local || '') + '</div>' +
+                  '<div class="score-inputs">' +
+                    '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'L\')" title="Restar gol (-1)">-1</button>' +
+                    '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'L\')">+1</button>' +
+                    '<input type="number" min="0" value="' + valGolesL + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)">' +
+                    '<span>VS</span>' +
+                    '<input type="number" min="0" value="' + valGolesV + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)">' +
+                    '<button type="button" class="btn-goal" onclick="window.sumarGol(' + index + ', \'V\')">+1</button>' +
+                    '<button type="button" class="btn-goal-sub" onclick="window.restarGol(' + index + ', \'V\')" title="Restar gol (-1)">-1</button>' +
+                  '</div>' +
+                  '<div style="font-weight:bold; font-size:1.1rem;">' + (m.visitante || '') + '</div>' +
+                  '<div style="display:flex; gap:8px; width:100%; margin-top:4px;">' +
+                    '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                    '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
+                  '</div>' +
+                '</div>' + panelDirectoHTML + eventosHTML + fotosPublicasCombinadas;
+            } else {
+              let badgeHtml = isLocal ? '<span class="badge badge-local">En Casa</span>' : '<span class="badge badge-visitante">Fuera</span>';
+              let presentacionHtml = m.horaPresentacion ? '<div class="info-item"><span class="info-label">⏱️ Presentación</span>' + m.horaPresentacion + '</div>' : '';
+              
+              cuerpoHTML = nextBannerHTML + liveBadgeHTML + 
+                '<div class="card-header"><span style="font-weight:700; font-size:0.85rem; color:var(--text-muted); text-transform:uppercase;">' + (m.jornada || '') + '</span>' + badgeHtml + '</div>' +
+                '<div class="vs-container"><div class="team home">' + (m.local || '') + '</div><div class="score-display"><span>' + textGolesL + '</span><span>:</span><span>' + textGolesV + '</span></div><div class="team away">' + (m.visitante || '') + '</div></div>' +
+                goleadoresPublicoHTML + ((m.eventos && m.eventos.length > 0) ? eventosHTML : '') +
+                '<div class="info-grid">' +
+                  '<div class="info-item"><span class="info-label">📅 Fecha</span>' + (m.fecha ? window.formatearFecha(m.fecha) : 'Sin fijar') + '</div>' +
+                  '<div class="info-item"><span class="info-label">⏰ Partido</span>' + (m.hora || 'Por confirmar') + '</div>' +
+                  presentacionHtml +
+                  '<div class="info-item info-full"><span class="info-label">📍 Pabellón</span>' + linkMapaHTML + '</div>' +
+                '</div>' + fotosPublicasCombinadas +
+                '<div class="botones-accion">' +
+                  '<button class="btn-action btn-wa" onclick="window.compartirWA(' + index + ')">💬 Resumen WA</button>' +
+                  '<button class="btn-action btn-img" onclick="window.descargarImagen(' + index + ')">📸 Imagen</button>' +
+                '</div>';
+            }
+            card.innerHTML = cuerpoHTML;
+            container.appendChild(card);
+          });
+      }
+
+      if (partidosMostrados === 0 && !window.modoEdicion && window.modoMarcador === null) {
+         container.innerHTML = '<div style="text-align:center; padding: 30px 10px; color: var(--text-muted); font-weight:600;">No hay partidos para mostrar en este filtro.</div>';
+      }
+
+      const adminControls = document.getElementById('adminControls');
+      if (window.modoEdicion) { 
+        adminControls.innerHTML = '<button class="btn-add-match" onclick="window.anadirPartido()">➕ Añadir Partido a "' + window.currentFase + '"</button>' +
+          '<div style="display:flex; gap:10px; margin-bottom:10px;">' +
+             '<button class="btn-new-season" onclick="window.editarMensajesRapidos()" style="background:#8b5cf6; margin:0; flex:1; padding:10px; font-size:0.9rem;">💬 Configurar Mensajes Rápidos</button>' +
+             '<button class="btn-new-season" onclick="window.configurarTelegram()" style="background:#0ea5e9; margin:0; flex:1; padding:10px; font-size:0.9rem;">🤖 Configurar Bot Telegram</button>' +
+          '</div>' +
+          '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 2.9.1 - Modo Administrador</div>'; 
+      } else { adminControls.innerHTML = ''; }
+
+      if (window.scrollToMatchId && window.modoMarcador === null) {
+        if (appData.partidos) {
+            const targetIndex = appData.partidos.findIndex(p => p.id == window.scrollToMatchId);
+            if (targetIndex > -1) {
+              setTimeout(() => {
+                const cardEl = document.getElementById('tarjeta-' + targetIndex);
+                if (cardEl) {
+                   cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                   cardEl.style.boxShadow = '0 0 0 4px var(--primary)';
+                   setTimeout(() => { cardEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }, 3000); 
+                }
+              }, 300);
+            }
+        }
+        window.scrollToMatchId = null; 
+      }
+    }
+
+    setInterval(() => {
+      if (!appData.partidos) return;
+      appData.partidos.forEach((m, index) => {
+        let text = m.estadoPeriodo || '';
+        if (text === '') return;
+        
+        let isLive = (text === '1ª Parte' || text === '2ª Parte');
+        let isDescanso = (text === 'Descanso');
+        let totalSecs = m.tiempoAcumulado || 0;
+        
+        if (m.timerActivo) { 
+           let diff = Math.floor((Date.now() - (m.timerInicio || Date.now())) / 1000);
+           if (isDescanso) {
+              totalSecs = Math.max(0, totalSecs - diff);
+           } else {
+              totalSecs += diff;
+           }
+        }
+        
+        let mins = Math.floor(totalSecs / 60);
+        let secs = totalSecs % 60;
+        let timeString = mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+        
+        let inicioInfo = m.horaReal ? ' <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Inició: ' + m.horaReal + ')</span>' : '';
+        let finInfo = m.horaFinReal ? ' <span style="font-size:0.75rem; color:inherit; opacity:0.8;">(Finalizó: ' + m.horaFinReal + ')</span>' : '';
+
+        const elPub = document.getElementById('timer-display-pub-' + index);
+        if(elPub) {
+          if(text === 'Final') { elPub.innerHTML = '✅ RESULTADO FINAL' + finInfo; }
+          else if(isDescanso) { elPub.innerHTML = '⏸️ DESCANSO <span style="margin-left:4px; font-variant-numeric:tabular-nums;">' + timeString + '</span>'; }
+          else if(isLive) {
+            elPub.innerHTML = (m.timerActivo ? '<span class="blink">🔴</span> ' : '⏸️ ') + text + ' <span style="margin-left:4px; font-variant-numeric:tabular-nums;">' + timeString + '</span>' + inicioInfo;
+          }
+        }
+
+        const elAdmin = document.getElementById('timer-display-admin-' + index);
+        if(elAdmin) { elAdmin.innerText = timeString; elAdmin.style.color = m.timerActivo ? '#dc2626' : '#1f2937'; }
+      });
+    }, 1000);
+
+  </script>
+
+  <!-- SCRIPT PARA INSTALAR LA APP Y CONTROLAR LOS CARTELES (ANDROID / iOS) -->
+  <script>
+    const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isMac = /macintosh|mac os x/i.test(userAgent) && window.navigator.maxTouchPoints > 1;
+      return /iphone|ipad|ipod/.test(userAgent) || isMac;
+    };
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    if (isIos() && !isInStandaloneMode()) {
+       document.getElementById('iosInstallBanner').style.display = 'block';
+    }
+
+    let pwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      pwaPrompt = e;
+      if (!isIos()) {
+         document.getElementById('installBanner').style.display = 'block';
+      }
+    });
+
+    window.instalarPWA = function() {
+      if (pwaPrompt) {
+        pwaPrompt.prompt();
+        pwaPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            document.getElementById('installBanner').style.display = 'none';
+          }
+          pwaPrompt = null;
+        });
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.log('Fallo al registrar ServiceWorker: ', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
