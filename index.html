@@ -257,7 +257,7 @@
         return [data];
     };
 
-    // V3.40: Limpiador radical de caché para arreglar el problema del botón desaparecido
+    // V3.41: Botón Anti-Caché Potenciado
     window.limpiarCache = function() {
         if(confirm("¿Forzar actualización de la App? Esto limpiará la memoria de este dispositivo para cargar la versión más reciente del servidor.")) {
             if ('serviceWorker' in navigator) {
@@ -270,11 +270,11 @@
             if ('caches' in window) {
                 caches.keys().then(keys => {
                     Promise.all(keys.map(k => caches.delete(k))).then(() => {
-                        window.location.reload(true);
+                        window.location.href = window.location.pathname + '?reload=' + Date.now();
                     });
                 });
             } else {
-                window.location.reload(true);
+                window.location.href = window.location.pathname + '?reload=' + Date.now();
             }
         }
     };
@@ -635,7 +635,6 @@
       window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(texto), '_blank');
     };
 
-    // V3.40: Botón Universal para enviar recordatorio de WA (con o sin convocatoria)
     window.enviarRecordatorioWA = function(index) {
         let m = appData.partidos[index];
         let rival = m.visitante || 'Rival';
@@ -980,7 +979,6 @@
         }).catch(err => console.error("Error Telegram:", err));
     };
 
-    // V3.40: Botones públicos funcionales recuperados
     window.compartirWA = function(index) {
       const m = appData.partidos[index];
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
@@ -1073,28 +1071,6 @@
           link.click();
         });
       }, 150); 
-    };
-
-    // V3.40: Botón recuperado para Avisos Flash de WhatsApp del acta
-    window.compartirFlashWA = function(index, evId, isAuto = false) {
-      if (isAuto && window.modoMarcador !== null && !appData.config.delegadoWA) return;
-        
-      const m = appData.partidos[index];
-      const ev = m.eventos.find(e => e.id == evId);
-      if(!ev) return;
-      
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
-      
-      let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
-      let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
-
-      let lineaTiempo = ('📌 ' + ev.periodo + ' ' + tiempoWa + ' ' + horaWa).trim();
-      let vL = m.golesL !== "" ? m.golesL : 0;
-      let vV = m.golesV !== "" ? m.golesV : 0;
-
-      let textoFlash = '⚡ *AVISO FLASH* ⚡\n\n' + ev.texto + '\n' + lineaTiempo + '\n\n📊 *Marcador:* ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n\n📱 *Ir al directo:* ' + appUrl;
-      
-      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(textoFlash), '_blank');
     };
 
     window.enviarFlashTelegram = function(index, evId) {
@@ -1400,6 +1376,27 @@
           guardarDatos();
           window.enviarFlashTelegram(index, evId); 
       }
+    };
+
+    window.compartirFlashWA = function(index, evId, isAuto = false) {
+      if (isAuto && window.modoMarcador !== null && !appData.config.delegadoWA) return;
+        
+      const m = appData.partidos[index];
+      const ev = m.eventos.find(e => e.id == evId);
+      if(!ev) return;
+      
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
+      let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
+
+      let lineaTiempo = ('📌 ' + ev.periodo + ' ' + tiempoWa + ' ' + horaWa).trim();
+      let vL = m.golesL !== "" ? m.golesL : 0;
+      let vV = m.golesV !== "" ? m.golesV : 0;
+
+      let textoFlash = '⚡ *AVISO FLASH* ⚡\n\n' + ev.texto + '\n' + lineaTiempo + '\n\n📊 *Marcador:* ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n\n📱 *Ir al directo:* ' + appUrl;
+      
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(textoFlash), '_blank');
     };
 
     window.cambiarEstadoPeriodo = function(index, valor) {
@@ -2016,7 +2013,6 @@
                    if (window.modoEdicion && m.convocatoriaActiva) {
                        adminConvoTools += '<div style="display:flex; gap:8px; margin-top:8px;">' +
                          '<button onclick="window.forzarAvisoPadres(' + index + ')" style="background:#8b5cf6; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Fuerza a la app a sacar el popup a los padres pendientes">🔔 Forzar Aviso App</button>' +
-                         '<button onclick="window.enviarRecordatorioWA(' + index + ')" style="background:#25d366; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Envía un texto al grupo para recordar que confirmen asistencia">📲 Enviar por WA</button>' +
                        '</div>';
                    }
                } else {
@@ -2262,7 +2258,6 @@
             let chkMaps = m.mostrarMaps !== false ? 'checked' : '';
             let chkWaze = m.mostrarWaze !== false ? 'checked' : '';
             
-            // V3.40: Botón de Recordatorio universal extra
             let adminExtraButtons = '';
             if (showWaBtn) {
                 adminExtraButtons = '<button class="btn-action" style="background:#8b5cf6;" onclick="window.enviarRecordatorioWA(' + index + ')">📢 Aviso WA</button>';
@@ -2613,7 +2608,7 @@
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => {
+        navigator.serviceWorker.register('./sw.js?reload=' + Date.now()).catch(err => {
           console.log('Fallo al registrar ServiceWorker: ', err);
         });
       });
