@@ -257,6 +257,28 @@
         return [data];
     };
 
+    // V3.40: Limpiador radical de caché para arreglar el problema del botón desaparecido
+    window.limpiarCache = function() {
+        if(confirm("¿Forzar actualización de la App? Esto limpiará la memoria de este dispositivo para cargar la versión más reciente del servidor.")) {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) { 
+                        registration.unregister(); 
+                    }
+                });
+            }
+            if ('caches' in window) {
+                caches.keys().then(keys => {
+                    Promise.all(keys.map(k => caches.delete(k))).then(() => {
+                        window.location.reload(true);
+                    });
+                });
+            } else {
+                window.location.reload(true);
+            }
+        }
+    };
+
     window.ordenarPlantilla = function() {
         if (appData.config && appData.config.plantilla && appData.config.plantilla.length > 0) {
             appData.config.plantilla.sort(function(a, b) {
@@ -613,19 +635,28 @@
       window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(texto), '_blank');
     };
 
-    // V3.39: Botón para enviar recordatorio de convocatoria por WhatsApp
-    window.recordatorioConvocatoriaWA = function(index) {
+    // V3.40: Botón Universal para enviar recordatorio de WA (con o sin convocatoria)
+    window.enviarRecordatorioWA = function(index) {
         let m = appData.partidos[index];
         let rival = m.visitante || 'Rival';
         let eqNombre = (appData.config && appData.config.equipo) ? String(appData.config.equipo).toUpperCase().split(" ")[0] : "EQUIPO";
         if(m.local !== (appData.config.equipo || "NUEVO EQUIPO") && String(m.local).toUpperCase().indexOf(eqNombre) === -1) {
              rival = m.local;
         }
-        let diaTxt = m.fecha ? window.formatearFecha(m.fecha) : "Sin fecha";
-        let horaTxt = m.hora ? m.hora : "Sin hora";
+        let diaTxt = m.fecha ? window.formatearFecha(m.fecha) : "Sin fijar";
+        let horaTxt = m.hora ? m.hora : "Sin fijar";
         let appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
         
-        let texto = "📢 *RECORDATORIO DE PARTIDO* ⚽\n\nJugamos contra *" + rival + "*.\n📅 " + diaTxt + " a las ⏰ " + horaTxt + "\n\n⚠️ Por favor, entrad en la App para *confirmar la disponibilidad* de las jugadoras lo antes posible:\n👉 " + appUrl;
+        let lugarTxt = m.lugar && m.lugar.toLowerCase().indexOf('pendiente') === -1 ? '\n📍 Pabellón: *' + m.lugar + '*' : '';
+        let citaTxt = m.horaPresentacion ? '\n⏱️ Hora de cita: *' + m.horaPresentacion + '*' : '';
+        
+        let texto = "📢 *RECORDATORIO DE PARTIDO* ⚽\n\n🏆 " + (m.fase || '') + " - " + (m.jornada || '') + "\n🆚 *" + rival + "*\n📅 " + diaTxt + " a las ⏰ " + horaTxt + citaTxt + lugarTxt;
+        
+        if (m.convocatoriaActiva) {
+             texto += "\n\n⚠️ Por favor, entrad en la App para *confirmar disponibilidad* lo antes posible:\n👉 " + appUrl;
+        } else {
+             texto += "\n\n📱 Podéis seguir el directo aquí:\n👉 " + appUrl;
+        }
         
         window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(texto), '_blank');
     };
@@ -949,6 +980,7 @@
         }).catch(err => console.error("Error Telegram:", err));
     };
 
+    // V3.40: Botones públicos funcionales recuperados
     window.compartirWA = function(index) {
       const m = appData.partidos[index];
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
@@ -1041,6 +1073,28 @@
           link.click();
         });
       }, 150); 
+    };
+
+    // V3.40: Botón recuperado para Avisos Flash de WhatsApp del acta
+    window.compartirFlashWA = function(index, evId, isAuto = false) {
+      if (isAuto && window.modoMarcador !== null && !appData.config.delegadoWA) return;
+        
+      const m = appData.partidos[index];
+      const ev = m.eventos.find(e => e.id == evId);
+      if(!ev) return;
+      
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
+      let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
+
+      let lineaTiempo = ('📌 ' + ev.periodo + ' ' + tiempoWa + ' ' + horaWa).trim();
+      let vL = m.golesL !== "" ? m.golesL : 0;
+      let vV = m.golesV !== "" ? m.golesV : 0;
+
+      let textoFlash = '⚡ *AVISO FLASH* ⚡\n\n' + ev.texto + '\n' + lineaTiempo + '\n\n📊 *Marcador:* ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n\n📱 *Ir al directo:* ' + appUrl;
+      
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(textoFlash), '_blank');
     };
 
     window.enviarFlashTelegram = function(index, evId) {
@@ -1749,7 +1803,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.39 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1759,7 +1813,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.39 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1768,7 +1822,7 @@
           '</div>';
       } else {
         header.innerHTML = onlineBadgeHtml + 
-          '<div class="version-badge">v. 3.39 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1876,7 +1930,7 @@
 
                       if (!vistoDefinitivo) {
                           if (exijeConf && (todosConfirmados || miHijaConfirmada)) {
-                              // Saltamos el aviso porque no hay nada que confirmar para esta familia
+                              
                           } else {
                               window.mostrarAvisoPartido(pProx, indiceProximo);
                           }
@@ -1962,7 +2016,7 @@
                    if (window.modoEdicion && m.convocatoriaActiva) {
                        adminConvoTools += '<div style="display:flex; gap:8px; margin-top:8px;">' +
                          '<button onclick="window.forzarAvisoPadres(' + index + ')" style="background:#8b5cf6; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Fuerza a la app a sacar el popup a los padres pendientes">🔔 Forzar Aviso App</button>' +
-                         '<button onclick="window.recordatorioConvocatoriaWA(' + index + ')" style="background:#25d366; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Envía un texto al grupo para recordar que confirmen asistencia">📲 Enviar por WA</button>' +
+                         '<button onclick="window.enviarRecordatorioWA(' + index + ')" style="background:#25d366; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Envía un texto al grupo para recordar que confirmen asistencia">📲 Enviar por WA</button>' +
                        '</div>';
                    }
                } else {
@@ -2207,6 +2261,12 @@
             let textGolesV = valGolesV !== "" ? valGolesV : "-";
             let chkMaps = m.mostrarMaps !== false ? 'checked' : '';
             let chkWaze = m.mostrarWaze !== false ? 'checked' : '';
+            
+            // V3.40: Botón de Recordatorio universal extra
+            let adminExtraButtons = '';
+            if (showWaBtn) {
+                adminExtraButtons = '<button class="btn-action" style="background:#8b5cf6;" onclick="window.enviarRecordatorioWA(' + index + ')">📢 Aviso WA</button>';
+            }
 
             if (window.modoEdicion) {
               let btnOculto = "";
@@ -2297,7 +2357,13 @@
                      '<span style="font-size:0.7rem; color:#92400e; align-self:center;">Permite que otro padre entre al candado para controlar ESE partido sin poder borrar nada.</span>' +
                   '</div>' +
                 '</div>' +
-              '</div>' + convocatoriaHTML + fotosPublicasCombinadas + panelFotosAdmin;
+              '</div>' + convocatoriaHTML + fotosPublicasCombinadas + panelFotosAdmin +
+              '<div class="botones-accion">' +
+                  '<button class="btn-action btn-wa" onclick="window.compartirWA(' + index + ')">💬 Resumen WA</button>' +
+                  adminExtraButtons +
+                  btnTelegramHTML +
+                  '<button class="btn-action btn-img" onclick="window.descargarImagen(' + index + ')">📸 Imagen</button>' +
+              '</div>';
 
             } else if (isDelegado) {
               let avisoFinalizadoDelegado = isFinalizado ? '<div style="background:#d1fae5; color:#047857; padding:6px; border-radius:6px; font-size:0.75rem; font-weight:bold; text-align:center; margin-bottom:8px;">✅ Partido Finalizado y Protegido</div>' : '';
@@ -2321,7 +2387,13 @@
                     '<input type="text" placeholder="Goleadores Local" value="' + (m.goleadoresL !== undefined ? m.golesL : '') + '" onchange="window.actualizarDato(' + index + ', \'golesL\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                     '<input type="text" placeholder="Goleadores Visitante" value="' + (m.golesV !== undefined ? m.golesV : '') + '" onchange="window.actualizarDato(' + index + ', \'golesV\', this.value)" style="font-size:0.75rem; font-weight:normal; border-style:dashed;">' +
                   '</div>' +
-                '</div>' + panelDirectoHTML + eventosHTML + convocatoriaHTML + fotosPublicasCombinadas;
+                '</div>' + panelDirectoHTML + eventosHTML + convocatoriaHTML + fotosPublicasCombinadas +
+                '<div class="botones-accion">' +
+                  '<button class="btn-action btn-wa" onclick="window.compartirWA(' + index + ')">💬 Resumen WA</button>' +
+                  adminExtraButtons +
+                  btnTelegramHTML +
+                  '<button class="btn-action btn-img" onclick="window.descargarImagen(' + index + ')">📸 Imagen</button>' +
+                '</div>';
             } else {
               let badgeHtml = isLocal ? '<span class="badge badge-local">En Casa</span>' : '<span class="badge badge-visitante">Fuera</span>';
               let presentacionHtml = m.horaPresentacion ? '<div class="info-item"><span class="info-label">⏱️ Presentación</span>' + m.horaPresentacion + '</div>' : '';
@@ -2339,7 +2411,6 @@
                 '</div>' + convocatoriaHTML + fotosPublicasCombinadas +
                 '<div class="botones-accion">' +
                   '<button class="btn-action btn-wa" onclick="window.compartirWA(' + index + ')">💬 Resumen WA</button>' +
-                  btnTelegramHTML +
                   '<button class="btn-action btn-img" onclick="window.descargarImagen(' + index + ')">📸 Imagen</button>' +
                 '</div>';
             }
@@ -2433,7 +2504,8 @@
           '</div>' +
           onlineListHTML +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.39 OFICIAL - Modo Administrador</div>'; 
+          '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Forzar Actualización App (Anti-Caché)</button>' +
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.40 OFICIAL - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
