@@ -7,8 +7,6 @@
   
   <title>Gestión de Equipo - Futsal TEST</title>
   
-  <!-- CONEXIÓN DE LA APP DE PRUEBAS (TRUCO ANTI-CACHÉ APLICADO AQUÍ) -->
-  <link rel="manifest" href="./manifest-test.json?v=test1">
   <meta name="theme-color" content="#ef4444">
   <link rel="apple-touch-icon" href="./logo2.png">
   
@@ -169,15 +167,6 @@
 
   <header id="mainHeader"></header>
   
-  <div id="installBanner" class="install-banner" onclick="window.instalarPWA()">
-    📲 Toca aquí para INSTALAR LA APP en tu móvil
-  </div>
-
-  <div id="iosInstallBanner" class="install-banner ios-banner" onclick="this.style.display='none'">
-    🍎 <b>Para instalar la App en iPhone/iPad:</b><br>
-    Toca el botón de Compartir (cuadrado con flecha) abajo en Safari y elige <b>"Añadir a la pantalla de inicio"</b>. <br><span style="font-size:0.7rem; font-weight:normal; opacity:0.8;">(Toca para cerrar este aviso)</span>
-  </div>
-
   <div id="status">Conectando con Firebase... Espera por favor.</div>
   
   <div class="container">
@@ -258,23 +247,8 @@
     };
 
     window.limpiarCache = function() {
-        if(confirm("¿Forzar actualización de la App? Esto limpiará la memoria de este dispositivo para cargar la versión más reciente del servidor.")) {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) { 
-                        registration.unregister(); 
-                    }
-                });
-            }
-            if ('caches' in window) {
-                caches.keys().then(keys => {
-                    Promise.all(keys.map(k => caches.delete(k))).then(() => {
-                        window.location.href = window.location.pathname + '?reload=' + Date.now();
-                    });
-                });
-            } else {
-                window.location.href = window.location.pathname + '?reload=' + Date.now();
-            }
+        if(confirm("¿Forzar limpieza? Esto recargará la web y descartará errores de memoria.")) {
+            window.location.href = window.location.pathname + '?reload=' + Date.now();
         }
     };
 
@@ -626,7 +600,7 @@
 
     window.avisarDirectoWA = function(index) {
       const m = appData.partidos[index];
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       
       let texto = "👋 ¡Hola familias! 💛\n\nEl partido va a comenzar ⚽🔥.\n\nPara no saturar el grupo, os dejamos el enlace del directo para seguir el marcador y el minuto a minuto.\n\n📱💻 *¡Podéis usar la App o entrar por la Web, tenemos las dos opciones!*\n\n👉 " + appUrl + "\n\n¡Vamos " + eq + "! 💪💛";
@@ -643,7 +617,7 @@
         }
         let diaTxt = m.fecha ? window.formatearFecha(m.fecha) : "Sin fijar";
         let horaTxt = m.hora ? m.hora : "Sin fijar";
-        let appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+        let appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
         
         let lugarTxt = m.lugar && m.lugar.toLowerCase().indexOf('pendiente') === -1 ? '\n📍 Pabellón: *' + m.lugar + '*' : '';
         let citaTxt = m.horaPresentacion ? '\n⏱️ Hora de cita: *' + m.horaPresentacion + '*' : '';
@@ -983,7 +957,7 @@
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
       
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       const enlaceDirectoWA = '\n📱 *Ir al directo:* ' + appUrl;
 
       let linkMapaWA = "";
@@ -1079,7 +1053,7 @@
       const ev = m.eventos.find(e => e.id == evId);
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1108,7 +1082,7 @@
       }
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1128,7 +1102,7 @@
       
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let linkMapaWA = m.lugar ? '\n📍 ' + m.lugar : "";
       
@@ -2520,7 +2494,7 @@
           '</div>' +
           onlineListHTML +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
-          '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Forzar Actualización App (Anti-Caché)</button>' +
+          '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Recargar Web</button>' +
           '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.42-TEST - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
@@ -2591,50 +2565,6 @@
         }
       });
     }, 1000);
-
-  </script>
-
-  <script>
-    const isIos = () => {
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const isMac = /macintosh|mac os x/i.test(userAgent) && window.navigator.maxTouchPoints > 1;
-      return /iphone|ipad|ipod/.test(userAgent) || isMac;
-    };
-    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
-
-    if (isIos() && !isInStandaloneMode()) {
-       document.getElementById('iosInstallBanner').style.display = 'block';
-    }
-
-    let pwaPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      pwaPrompt = e;
-      if (!isIos()) {
-         document.getElementById('installBanner').style.display = 'block';
-      }
-    });
-
-    window.instalarPWA = function() {
-      if (pwaPrompt) {
-        pwaPrompt.prompt();
-        pwaPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            document.getElementById('installBanner').style.display = 'none';
-          }
-          pwaPrompt = null;
-        });
-      }
-    };
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        // AQUÍ ESTÁ EL SCOPE QUE AÍSLA ESTA APP DE LA OFICIAL
-        navigator.serviceWorker.register('./sw-test.js?reload=' + Date.now(), { scope: './test.html' }).catch(err => {
-          console.log('Fallo al registrar ServiceWorker: ', err);
-        });
-      });
-    }
   </script>
 </body>
 </html>
