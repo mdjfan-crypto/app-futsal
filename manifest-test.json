@@ -3,6 +3,7 @@
   "name": "Futsal TEST",
   "short_name": "TEST FSF",
   "start_url": "./test.html",
+  "scope": "./test.html",
   "display": "standalone",
   "background_color": "#f4f6fa",
   "theme_color": "#ef4444",
