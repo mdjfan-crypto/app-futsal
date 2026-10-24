@@ -1,4 +1,4 @@
-const CACHE_NAME = 'futsal-app-TEST-dinamico'; 
+const CACHE_NAME = 'futsal-app-TEST-dinamico-v3.42'; 
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -9,7 +9,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME && cacheName.includes('TEST')) {
             return caches.delete(cacheName);
           }
         })
