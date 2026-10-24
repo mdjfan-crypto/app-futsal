@@ -7,6 +7,8 @@
   
   <title>Gestión de Equipo - Futsal TEST</title>
   
+  <!-- CONEXIÓN DE LA APP DE PRUEBAS (TRUCO ANTI-CACHÉ APLICADO AQUÍ) -->
+  <link rel="manifest" href="./manifest-test.json?v=test1">
   <meta name="theme-color" content="#ef4444">
   <link rel="apple-touch-icon" href="./logo2.png">
   
@@ -167,6 +169,15 @@
 
   <header id="mainHeader"></header>
   
+  <div id="installBanner" class="install-banner" onclick="window.instalarPWA()">
+    📲 Toca aquí para INSTALAR LA APP en tu móvil
+  </div>
+
+  <div id="iosInstallBanner" class="install-banner ios-banner" onclick="this.style.display='none'">
+    🍎 <b>Para instalar la App en iPhone/iPad:</b><br>
+    Toca el botón de Compartir (cuadrado con flecha) abajo en Safari y elige <b>"Añadir a la pantalla de inicio"</b>. <br><span style="font-size:0.7rem; font-weight:normal; opacity:0.8;">(Toca para cerrar este aviso)</span>
+  </div>
+
   <div id="status">Conectando con Firebase... Espera por favor.</div>
   
   <div class="container">
@@ -1862,11 +1873,14 @@
           container.innerHTML = '<div class="card" style="text-align:center; padding:16px;">' +
              '<h3 style="color:var(--dark); margin-bottom:12px;">🏆 RFFM Oficial</h3>' +
              '<div style="display:flex; gap:10px; margin-bottom:15px;">' +
-               '<a href="' + rffmClasif + '" target="_blank" style="flex:1; background:#10b981; color:white; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; text-decoration:none; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📊 Clasificación</a>' +
-               '<a href="' + rffmCalend + '" target="_blank" style="flex:1; background:#3b82f6; color:white; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; text-decoration:none; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📅 Calendario</a>' +
+               '<button onclick="document.getElementById(\'rffm-iframe\').src=\'' + rffmClasif + '\'" style="flex:1; background:#10b981; color:white; border:none; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📊 Clasificación</button>' +
+               '<button onclick="document.getElementById(\'rffm-iframe\').src=\'' + rffmCalend + '\'" style="flex:1; background:#3b82f6; color:white; border:none; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📅 Calendario</button>' +
              '</div>' +
-             '<p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">Vista previa integrada (algunos móviles pueden bloquearla por seguridad):</p>' +
-             '<iframe src="' + rffmClasif + '" style="width:100%; height:450px; border:1px solid #d1d5db; border-radius:8px; background:#fff;"></iframe>' +
+             '<p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">Vista previa integrada en la App:</p>' +
+             '<iframe id="rffm-iframe" src="' + rffmClasif + '" style="width:100%; height:450px; border:1px solid #d1d5db; border-radius:8px; background:#fff;"></iframe>' +
+             '<div style="margin-top:12px; font-size:0.8rem;">' +
+                '<a href="#" onclick="window.open(document.getElementById(\'rffm-iframe\').src, \'_blank\'); return false;" style="color:#0ea5e9; font-weight:bold; text-decoration:none;">🌐 Abrir esto a pantalla completa</a>' +
+             '</div>' +
              '</div>';
              
           document.getElementById('adminControls').innerHTML = '';
@@ -2565,6 +2579,20 @@
         }
       });
     }, 1000);
+
+  </script>
+
+  <script>
+    const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isMac = /macintosh|mac os x/i.test(userAgent) && window.navigator.maxTouchPoints > 1;
+      return /iphone|ipad|ipod/.test(userAgent) || isMac;
+    };
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    if (isIos() && !isInStandaloneMode()) {
+       document.getElementById('iosInstallBanner').style.display = 'block';
+    }
   </script>
 </body>
 </html>
