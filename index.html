@@ -257,7 +257,6 @@
         return [data];
     };
 
-    // V3.41: Botón Anti-Caché Potenciado
     window.limpiarCache = function() {
         if(confirm("¿Forzar actualización de la App? Esto limpiará la memoria de este dispositivo para cargar la versión más reciente del servidor.")) {
             if ('serviceWorker' in navigator) {
@@ -1073,6 +1072,27 @@
       }, 150); 
     };
 
+    window.compartirFlashWA = function(index, evId, isAuto = false) {
+      if (isAuto && window.modoMarcador !== null && !appData.config.delegadoWA) return;
+        
+      const m = appData.partidos[index];
+      const ev = m.eventos.find(e => e.id == evId);
+      if(!ev) return;
+      
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      
+      let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
+      let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
+
+      let lineaTiempo = ('📌 ' + ev.periodo + ' ' + tiempoWa + ' ' + horaWa).trim();
+      let vL = m.golesL !== "" ? m.golesL : 0;
+      let vV = m.golesV !== "" ? m.golesV : 0;
+
+      let textoFlash = '⚡ *AVISO FLASH* ⚡\n\n' + ev.texto + '\n' + lineaTiempo + '\n\n📊 *Marcador:* ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n\n📱 *Ir al directo:* ' + appUrl;
+      
+      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(textoFlash), '_blank');
+    };
+
     window.enviarFlashTelegram = function(index, evId) {
       if (!appData || !appData.config) return;
       const token = appData.config.telegramToken;
@@ -1376,27 +1396,6 @@
           guardarDatos();
           window.enviarFlashTelegram(index, evId); 
       }
-    };
-
-    window.compartirFlashWA = function(index, evId, isAuto = false) {
-      if (isAuto && window.modoMarcador !== null && !appData.config.delegadoWA) return;
-        
-      const m = appData.partidos[index];
-      const ev = m.eventos.find(e => e.id == evId);
-      if(!ev) return;
-      
-      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
-      
-      let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
-      let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
-
-      let lineaTiempo = ('📌 ' + ev.periodo + ' ' + tiempoWa + ' ' + horaWa).trim();
-      let vL = m.golesL !== "" ? m.golesL : 0;
-      let vV = m.golesV !== "" ? m.golesV : 0;
-
-      let textoFlash = '⚡ *AVISO FLASH* ⚡\n\n' + ev.texto + '\n' + lineaTiempo + '\n\n📊 *Marcador:* ' + (m.local || 'Local') + ' ' + vL + ' - ' + vV + ' ' + (m.visitante || 'Visitante') + '\n\n📱 *Ir al directo:* ' + appUrl;
-      
-      window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(textoFlash), '_blank');
     };
 
     window.cambiarEstadoPeriodo = function(index, valor) {
@@ -1800,7 +1799,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1810,7 +1809,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1819,7 +1818,7 @@
           '</div>';
       } else {
         header.innerHTML = onlineBadgeHtml + 
-          '<div class="version-badge">v. 3.40 OFICIAL</div>' +
+          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -2500,7 +2499,7 @@
           onlineListHTML +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
           '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Forzar Actualización App (Anti-Caché)</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.40 OFICIAL - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.41 OFICIAL - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
