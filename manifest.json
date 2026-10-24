@@ -1,8 +1,8 @@
 {
-  "name": "Gestión Futsal",
-  "short_name": "Futsal App",
-  "description": "Marcador de fútbol sala",
-  "start_url": "./test.html",
+  "id": "futsal-oficial",
+  "name": "Futsal Team",
+  "short_name": "FSF Oficial",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f6fa",
   "theme_color": "#0b2265",
