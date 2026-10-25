@@ -7,8 +7,6 @@
   
   <title>Gestión de Equipo - Futsal TEST</title>
   
-  <!-- CONEXIÓN DE LA APP DE PRUEBAS (TRUCO ANTI-CACHÉ APLICADO AQUÍ) -->
-  <link rel="manifest" href="./manifest-test.json?v=test1">
   <meta name="theme-color" content="#ef4444">
   <link rel="apple-touch-icon" href="./logo2.png">
   
@@ -44,7 +42,7 @@
     .header-edit input.title-input { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
     
     #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
-    .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: var(--primary); padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; }
+    .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: white; padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; }
     
     #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; z-index: 10; white-space: nowrap; max-width: 85%; overflow: hidden; text-overflow: ellipsis; }
     
@@ -169,15 +167,6 @@
 
   <header id="mainHeader"></header>
   
-  <div id="installBanner" class="install-banner" onclick="window.instalarPWA()">
-    📲 Toca aquí para INSTALAR LA APP en tu móvil
-  </div>
-
-  <div id="iosInstallBanner" class="install-banner ios-banner" onclick="this.style.display='none'">
-    🍎 <b>Para instalar la App en iPhone/iPad:</b><br>
-    Toca el botón de Compartir (cuadrado con flecha) abajo en Safari y elige <b>"Añadir a la pantalla de inicio"</b>. <br><span style="font-size:0.7rem; font-weight:normal; opacity:0.8;">(Toca para cerrar este aviso)</span>
-  </div>
-
   <div id="status">Conectando con Firebase... Espera por favor.</div>
   
   <div class="container">
@@ -196,7 +185,7 @@
     }, 6000);
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, onDisconnect, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, get, onDisconnect, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCltxh4O6J6OAjGaW-YVApDCv2sRaw98Hs", 
@@ -213,7 +202,10 @@
     
     const urlParams = new URLSearchParams(window.location.search);
     const equipoURL = urlParams.get('equipo');
-    const idEquipoActual = equipoURL ? equipoURL : 'alcorcon26';
+    const equipoBase = equipoURL ? equipoURL : 'alcorcon26';
+    
+    // MAGIA DE TEST: Aisla automáticamente esta web para que no pise la oficial
+    const idEquipoActual = equipoBase + '_TEST'; 
     
     const appRef = ref(db, 'datos_' + idEquipoActual); 
     const statsRef = ref(db, 'stats_' + idEquipoActual + '/instalaciones'); 
@@ -260,6 +252,24 @@
     window.limpiarCache = function() {
         if(confirm("¿Forzar limpieza? Esto recargará la web y descartará errores de memoria.")) {
             window.location.href = window.location.pathname + '?reload=' + Date.now();
+        }
+    };
+    
+    // BOTÓN MÁGICO DE CLONADO
+    window.clonarDatosOficiales = function() {
+        if(confirm("⚠️ ¿Seguro que quieres clonar los datos?\n\nEsto borrará tu entorno de pruebas actual y copiará exactamente los partidos y la plantilla que hay AHORA MISMO en la App Oficial de los padres.")) {
+            const oficialRef = ref(db, 'datos_' + equipoBase);
+            get(oficialRef).then((snapshot) => {
+                if(snapshot.exists()) {
+                    set(appRef, snapshot.val()).then(() => {
+                        alert("✅ Datos clonados con éxito. Tu entorno de pruebas es ahora idéntico al oficial.");
+                    });
+                } else {
+                    alert("No se encontraron datos en la app oficial.");
+                }
+            }).catch(error => {
+                alert("Error al clonar: " + error);
+            });
         }
     };
 
@@ -360,7 +370,7 @@
 
     const datosIniciales = {
       config: { 
-         equipo: "NUEVO EQUIPO", 
+         equipo: "NUEVO EQUIPO TEST", 
          categoria: "Categoría y Temporada", 
          fases: ["1ª Fase"], 
          logo: "", 
@@ -385,29 +395,8 @@
             "⚠️ 5 Faltas acumuladas"
          ]
       },
-      partidos: [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "", hora: "", horaPresentacion: "", local: "NUEVO EQUIPO", visitante: "RIVAL", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", fotoActa: "", estadoPeriodo: "", timerActivo: false, tiempoAcumulado: 0, horaReal: "", horaFinReal: "", duracionParte: 25, duracionDescanso: 10, eventos: [], pinMarcador: "", oculto: false, convocatoriaActiva: false, asistencia: {}, motivos: {}, nivelRival: "Desconocido" }]
+      partidos: []
     };
-
-    if (idEquipoActual === 'alcorcon26') {
-      datosIniciales.config = { 
-        equipo: "AD ALCORCÓN FSF 'B'", 
-        categoria: "Infantil Femenino Sala • 1ª Fase", 
-        fases: ["1ª Fase"],
-        logo: "https://upload.wikimedia.org/wikipedia/en/thumb/5/58/AD_Alcorcon_logo.svg/200px-AD_Alcorcon_logo.svg.png",
-        plantilla: [],
-        mostrarDorsales: false,
-        horasAviso: 24,
-        maxAvisos: 2,
-        recordatorioPartido: true,
-        recordatorioConfirmacion: true,
-        delegadoWA: false,
-        mensajeAnimo: "¡Vamos chicas! 💛",
-        telegramToken: "",
-        telegramChatId: "",
-        mensajesRapidos: datosIniciales.config.mensajesRapidos
-      };
-      datosIniciales.partidos = [{ id: Date.now(), fase: "1ª Fase", jornada: "Jornada 1", fecha: "2026-09-27", hora: "", horaPresentacion: "", local: "AD ALCORCÓN FSF 'B'", visitante: "C.D. FUTSI ATL. NAVALCARNERO 'B'", lugar: "Pendiente confirmar", linkMapa: "", mostrarMaps: true, mostrarWaze: true, golesL: "", golesV: "", goleadoresL: "", goleadoresV: "", foto: "", fotoActa: "", eventos: [], pinMarcador: "", oculto: false, duracionParte: 25, duracionDescanso: 10, convocatoriaActiva: false, asistencia: {}, motivos: {}, nivelRival: "Desconocido" }];
-    }
 
     window.formatearFecha = function(fechaOriginal) {
       if (!fechaOriginal) return '';
@@ -455,7 +444,7 @@
     onValue(appRef, (snapshot) => {
       try {
           const data = snapshot.val();
-          document.getElementById('status').innerText = '🟢 En línea - Equipo: ' + idEquipoActual;
+          document.getElementById('status').innerText = '🟢 En línea - Equipo TEST: ' + idEquipoActual;
           
           if (data) {
             appData = data;
@@ -611,7 +600,7 @@
 
     window.avisarDirectoWA = function(index) {
       const m = appData.partidos[index];
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       
       let texto = "👋 ¡Hola familias! 💛\n\nEl partido va a comenzar ⚽🔥.\n\nPara no saturar el grupo, os dejamos el enlace del directo para seguir el marcador y el minuto a minuto.\n\n📱💻 *¡Podéis usar la App o entrar por la Web, tenemos las dos opciones!*\n\n👉 " + appUrl + "\n\n¡Vamos " + eq + "! 💪💛";
@@ -628,7 +617,7 @@
         }
         let diaTxt = m.fecha ? window.formatearFecha(m.fecha) : "Sin fijar";
         let horaTxt = m.hora ? m.hora : "Sin fijar";
-        let appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+        let appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
         
         let lugarTxt = m.lugar && m.lugar.toLowerCase().indexOf('pendiente') === -1 ? '\n📍 Pabellón: *' + m.lugar + '*' : '';
         let citaTxt = m.horaPresentacion ? '\n⏱️ Hora de cita: *' + m.horaPresentacion + '*' : '';
@@ -968,7 +957,7 @@
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
       const enlaceDirectoWA = '\n📱 *Ir al directo:* ' + appUrl;
 
       let linkMapaWA = "";
@@ -1064,7 +1053,7 @@
       const ev = m.eventos.find(e => e.id == evId);
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1093,7 +1082,7 @@
       }
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1113,7 +1102,7 @@
       
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(equipoBase) + "&match=" + m.id;
       
       let linkMapaWA = m.lugar ? '\n📍 ' + m.lugar : "";
       
@@ -1865,7 +1854,6 @@
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
 
-      // V3.42-TEST: Vista exclusiva para la pestaña RFFM (Clasificación)
       if (!window.modoEdicion && window.modoMarcador === null && window.filtroVista === 'clasif') {
           let rffmClasif = "https://www.rffm.es/competicion/clasificaciones?temporada=22&tipojuego=3&competicion=26738223&grupo=28169452";
           let rffmCalend = "https://www.rffm.es/competicion/calendario?temporada=22&tipojuego=3&competicion=26738223&grupo=28169452";
@@ -2507,7 +2495,7 @@
             '<label style="font-size:0.8rem; display:flex; align-items:center; gap:6px;"><input type="checkbox" ' + (appData.config.delegadoWA ? 'checked' : '') + ' onchange="window.actualizarConfig(\'delegadoWA\', this.checked)"> Permitir al delegado usar los botones flash de WhatsApp</label>' +
           '</div>' +
           onlineListHTML +
-          '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
+          '<button class="btn-new-season" onclick="window.clonarDatosOficiales()" style="margin-top:10px; background:#f59e0b; color:white; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.1);">🔄 Clonar App Oficial a Test</button>' +
           '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Recargar Web</button>' +
           '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.42-TEST - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
