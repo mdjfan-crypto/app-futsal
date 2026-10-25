@@ -7,11 +7,12 @@
   
   <title>Gestión de Equipo - Futsal</title>
   
-  <!-- CONEXIÓN DE LA APP (TRUCO ANTI-CACHÉ APLICADO AQUÍ) -->
-  <link rel="manifest" href="./manifest.json?v=oficial1">
+  <!-- CONEXIÓN DE LA APP OFICIAL -->
+  <link rel="manifest" href="./manifest.json?v=342">
   <meta name="theme-color" content="#0b2265">
   <link rel="apple-touch-icon" href="./logo.png">
   
+  <!-- RADAR DE ERRORES GLOBAL -->
   <script>
     window.onerror = function(msg, url, line) {
       document.getElementById('status').innerHTML = '<span style="color:red; font-weight:bold; font-size:1.2rem;">❌ ERROR JS: ' + msg + ' (Línea ' + line + ')</span>';
@@ -26,94 +27,124 @@
   
   <style>
     :root { --primary: #f8c300; --secondary: #0b2265; --dark: #07153b; --bg: #f4f6fa; --card-bg: #ffffff; --text: #1f2937; --text-muted: #6b7280; }
+    
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     button, input, select, .tab-btn { touch-action: manipulation; }
+    
     body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
+    
     header { position: relative; background: linear-gradient(135deg, var(--secondary), var(--dark)); color: #fff; padding: 20px 16px; text-align: center; border-bottom: 4px solid var(--primary); min-height: 80px;}
     .header-logo { max-height: 70px; margin-bottom: 8px; object-fit: contain; }
     .logo-edit-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; margin-top: 25px; } 
     .btn-logo { background: rgba(255,255,255,0.15); border: 1px dashed rgba(255,255,255,0.4); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
     header h1 { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--primary); margin-bottom: 4px; }
     header p { font-size: 0.85rem; opacity: 0.9; }
+    
     .header-edit input { width: 100%; text-align: center; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.5); color: white; border-radius: 6px; padding: 4px; margin-bottom: 4px; }
     .header-edit input.title-input { font-size: 1.25rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+    
     #btnLock { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 8px; }
-    .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: var(--primary); padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; }
+    
+    /* BOTÓN DE VERSIÓN MEJORADO (Ahora es clicable) */
+    .version-badge { position: absolute; top: 20px; right: 55px; background: rgba(0,0,0,0.3); color: var(--primary); padding: 4px 6px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; letter-spacing: 0.5px; cursor: pointer; border: 1px solid rgba(248, 195, 0, 0.3); transition: all 0.2s;}
+    .version-badge:active { transform: scale(0.95); background: rgba(0,0,0,0.5); }
+    
     #onlineBadge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; border: 1px solid #10b981; z-index: 10; white-space: nowrap; max-width: 85%; overflow: hidden; text-overflow: ellipsis; }
+    
     .install-banner { background: #10b981; color: white; text-align: center; padding: 12px; font-weight: 800; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; animation: slideDown 0.5s ease; border-bottom: 2px solid #059669; }
     .ios-banner { background: #3b82f6; border-bottom: 2px solid #2563eb; cursor: default; font-weight: 600; line-height: 1.4; font-size: 0.85rem; }
     @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
     .container { max-width: 600px; margin: 0 auto; padding: 14px; }
+    
     .tabs-wrapper { display: flex; overflow-x: auto; background: var(--card-bg); margin-bottom: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 6px; gap: 6px; align-items: center; }
     .tabs-wrapper::-webkit-scrollbar { height: 0px; }
     .tab-btn { flex: 0 0 auto; background: transparent; border: none; padding: 10px 16px; font-weight: 700; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: all 0.2s; white-space: nowrap; }
     .tab-btn.active { background: var(--primary); color: var(--dark); }
     .tab-btn.action-tab { border: 1px dashed #9ca3af; padding: 10px 12px; }
     .tab-btn.edit-tab { padding: 10px; font-size: 1rem; }
+    
     .filter-wrapper { background: #e5e7eb; padding: 4px; border-radius: 10px; margin-bottom: 16px; display: flex; gap: 4px; }
     .filter-btn { flex: 1; background: transparent; border: none; padding: 8px 4px; font-weight: 700; font-size: 0.85rem; color: #4b5563; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
     .filter-btn.active { background: #ffffff; color: var(--dark); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    
     .card { background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--secondary); position: relative; transition: all 0.5s ease; }
     .card.local { border-left-color: var(--primary); }
+    
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .badge { font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
     .badge-local { background: #fef3c7; color: #92400e; }
     .badge-visitante { background: #e0e7ff; color: #3730a3; }
+    
     .jornada-edit { width: 80px; padding: 2px 4px; font-size: 0.8rem; font-weight: bold; border: 1px solid #d1d5db; border-radius: 4px; }
+    
     .vs-container { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; font-weight: 700; font-size: 0.95rem; }
     .team { flex: 1; }
     .team.home { text-align: left; }
     .team.away { text-align: right; }
     .team-input { width: 100%; font-weight: bold; font-size: 0.9rem; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; text-align: center; }
+    
     .score-display { display: flex; gap: 8px; font-size: 1.2rem; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; }
     .score-inputs { display: flex; align-items: center; gap: 4px; }
     .score-inputs input { width: 36px; height: 34px; text-align: center; font-weight: bold; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 6px; }
     .btn-goal { background: var(--primary); color: var(--dark); border: none; font-weight: 900; font-size: 1rem; border-radius: 6px; padding: 0 8px; height: 34px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
     .btn-goal:active { transform: scale(0.95); }
     .btn-goal-sub { background: #e5e7eb; color: #374151; border: none; font-weight: bold; font-size: 0.9rem; border-radius: 6px; padding: 0 6px; height: 34px; cursor: pointer; }
+    
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.85rem; }
     .info-full { grid-column: span 2; }
     .info-item { background: #f9fafb; padding: 8px; border-radius: 6px; border: 1px solid #f3f4f6; }
     .info-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 2px; }
+    
     label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
     input[type="text"], input[type="time"], input[type="date"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; margin-top: 2px; }
+    
     .foto-container { margin-top: 12px; width: 100%; text-align: center; background:#f9fafb; border:1px dashed #d1d5db; padding:6px; border-radius:8px;}
     .foto-img { width: 100%; border-radius: 6px; object-fit: cover; max-height: 250px; display: block; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
     .foto-img:active { transform: scale(0.98); }
     .foto-uploader { display: flex; gap: 8px; }
     .btn-upload { flex: 1; text-align: center; background: #f3f4f6; border: 1px dashed #9ca3af; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #4b5563; cursor: pointer; }
     .btn-delete-item { background: #fee2e2; color: #991b1b; border: none; padding: 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    
     #lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; overflow: auto; text-align: center; }
     #lightbox img { margin-top: 70px; margin-bottom: 50px; max-width: 100%; height: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .lightbox-close { position: fixed; top: 15px; right: 15px; background: #ef4444; color: white; border: none; font-weight: bold; font-size: 0.9rem; padding: 8px 16px; border-radius: 999px; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;}
     .lightbox-tip { position: fixed; top: 20px; left: 15px; color: white; font-weight: bold; font-size: 0.8rem; z-index: 10000; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 6px;}
+
     #aviso-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 99999; justify-content: center; align-items: center; padding: 20px; }
     .aviso-content { background: white; border-radius: 12px; padding: 24px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border-top: 6px solid #10b981; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .aviso-content h2 { color: var(--dark); font-weight: 900; margin-bottom: 10px; font-size: 1.4rem; }
     .aviso-content p { color: #4b5563; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; }
     .btn-aviso-close { background: #10b981; color: white; border: none; padding: 14px 24px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
     .botones-accion { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;}
     .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 700; font-size: 0.8rem; cursor: pointer; min-width:100px; }
     .btn-wa { background-color: #25d366; }
     .btn-tg { background-color: #0ea5e9; }
     .btn-img { background-color: #3b82f6; }
+    
     .btn-add-match { width: 100%; background: #10b981; color: white; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .btn-new-season { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: white; }
+    
     #status { text-align: center; font-size: 0.85rem; margin-top: 15px; color: var(--text-muted); }
+
     @keyframes blink { 50% { opacity: 0.3; } }
     .blink { animation: blink 1.2s infinite; }
     .live-badge { background-color: #fee2e2; color: #dc2626; padding: 6px; border-radius: 8px; text-align: center; font-weight: 800; font-size: 0.95rem; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; border: 1px solid #fecaca; }
     .live-badge.paused { background-color: #f3f4f6; color: #4b5563; border-color: #d1d5db; }
     .live-badge.final { background-color: #d1fae5; color: #047857; border-color: #a7f3d0; }
     .live-badge.descanso { background-color: #fef3c7; color: #b45309; border-color: #fde68a; }
+    
     .next-match-banner { background:#10b981; color:white; font-size:0.75rem; font-weight:bold; text-align:center; padding:5px; border-radius:8px 8px 0 0; margin:-16px -16px 12px -16px; text-transform:uppercase; letter-spacing:1px; }
+
     .timer-admin-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
     .timer-admin-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
     .timer-admin-box select { padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-size: 0.8rem; font-weight: 600; background:#f0fdf4; color:#166534; cursor:pointer; }
     .timer-admin-box button { padding: 4px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; }
     .timer-admin-box input[type="number"] { width: 45px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; text-align: center; font-weight: bold; }
     .timer-admin-box input[type="time"] { width: 70px; padding: 4px; border-radius: 4px; border: 1px solid #d1d5db; font-weight: bold; font-size:0.75rem; }
+
     .log-container { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-top:12px; }
     .log-header { font-weight:800; font-size:0.8rem; color:var(--secondary); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
     .log-list { max-height: 155px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
@@ -125,25 +156,31 @@
   </style>
 </head>
 <body>
+
   <div id="lightbox">
     <div class="lightbox-tip">🔍 Estira para ampliar</div>
     <button class="lightbox-close" onclick="window.cerrarFoto()">✖ Cerrar</button>
     <img id="lightbox-img" src="">
   </div>
+
   <div id="aviso-modal" style="display:none;">
     <div class="aviso-content">
         <h2>⚠️ RECORDATORIO DE PARTIDO</h2>
         <div id="aviso-text"></div>
     </div>
   </div>
+
   <header id="mainHeader"></header>
+  
   <div id="installBanner" class="install-banner" onclick="window.instalarPWA()">
     📲 Toca aquí para INSTALAR LA APP en tu móvil
   </div>
+
   <div id="iosInstallBanner" class="install-banner ios-banner" onclick="this.style.display='none'">
     🍎 <b>Para instalar la App en iPhone/iPad:</b><br>
     Toca el botón de Compartir (cuadrado con flecha) abajo en Safari y elige <b>"Añadir a la pantalla de inicio"</b>. <br><span style="font-size:0.7rem; font-weight:normal; opacity:0.8;">(Toca para cerrar este aviso)</span>
   </div>
+
   <div id="status">Conectando con Firebase... Espera por favor.</div>
   
   <div class="container">
@@ -949,7 +986,7 @@
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       const enlaceDirectoWA = '\n📱 *Ir al directo:* ' + appUrl;
 
       let linkMapaWA = "";
@@ -1045,7 +1082,7 @@
       const ev = m.eventos.find(e => e.id == evId);
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "Aplazado" || ev.min === "Suspendido" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1074,7 +1111,7 @@
       }
       if(!ev) return;
       
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let tiempoWa = (ev.min === "Final" || ev.min === "-") ? "" : '| ⏱️ ' + ev.min;
       let horaWa = ev.hora ? '| ⌚ ' + ev.hora : '';
@@ -1094,7 +1131,7 @@
       
       const eq = (appData.config && appData.config.equipo) ? appData.config.equipo : "EQUIPO";
       const animo = (appData.config && appData.config.mensajeAnimo !== undefined) ? appData.config.mensajeAnimo : '¡Vamos ' + eq + '! 💛';
-      const appUrl = window.location.origin + window.location.pathname.replace('test.html', 'index.html') + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
+      const appUrl = window.location.origin + window.location.pathname + "?equipo=" + encodeURIComponent(idEquipoActual) + "&match=" + m.id;
       
       let linkMapaWA = m.lugar ? '\n📍 ' + m.lugar : "";
       
@@ -1765,7 +1802,7 @@
         let btnBorrarLogo = (appData.config && appData.config.logo) ? '<button class="btn-logo" style="background:#fee2e2; color:#991b1b; border:none;" onclick="window.actualizarConfig(\'logo\', \'\')">🗑️</button>' : '';
 
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
+          '<div class="version-badge" onclick="alert(\'NOVEDADES VERSIÓN 3.42 OFICIAL\\n\\n• 📊 Nueva pestaña RFFM integrada.\\n• 📅 Consulta de Clasificación y Calendario sin salir de la App.\\n\\n(Cambios respecto a v3.41)\')">v. 3.42 OFICIAL</div>' +
           '<div class="logo-edit-container">' + btnUploadLogo + btnBorrarLogo + '</div>' +
           '<div class="header-edit">' +
             '<input type="text" class="title-input" value="' + equipoNombre + '" onchange="window.actualizarConfig(\'equipo\', this.value)" placeholder="Nombre del Equipo">' +
@@ -1775,7 +1812,7 @@
           '<button id="btnLock" onclick="window.toggleEdicion()">🔓</button>';
       } else if (window.modoMarcador !== null) {
         header.innerHTML = onlineBadgeHtml +
-          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
+          '<div class="version-badge" onclick="alert(\'NOVEDADES VERSIÓN 3.42 OFICIAL\\n\\n• 📊 Nueva pestaña RFFM integrada.\\n• 📅 Consulta de Clasificación y Calendario sin salir de la App.\\n\\n(Cambios respecto a v3.41)\')">v. 3.42 OFICIAL</div>' +
           '<h1 style="color:#10b981; font-size:1.5rem;">🎯 MODO DELEGADO</h1>' +
           '<p>Control de marcador de partido.</p>' +
           '<div style="margin-top:10px; display:flex; justify-content:center; gap:10px;">' +
@@ -1784,7 +1821,7 @@
           '</div>';
       } else {
         header.innerHTML = onlineBadgeHtml + 
-          '<div class="version-badge">v. 3.41 OFICIAL</div>' +
+          '<div class="version-badge" onclick="alert(\'NOVEDADES VERSIÓN 3.42 OFICIAL\\n\\n• 📊 Nueva pestaña RFFM integrada.\\n• 📅 Consulta de Clasificación y Calendario sin salir de la App.\\n\\n(Cambios respecto a v3.41)\')">v. 3.42 OFICIAL</div>' +
           logoRender +
           '<h1>' + equipoNombre + '</h1>' +
           '<p>' + categoriaFase + '</p>' +
@@ -1818,10 +1855,12 @@
         let actProximo = window.filtroVista === 'proximo' ? 'active' : '';
         let actPendientes = window.filtroVista === 'pendientes' ? 'active' : '';
         let actTodos = window.filtroVista === 'todos' ? 'active' : '';
+        let actClasif = window.filtroVista === 'clasif' ? 'active' : '';
         filterMenu.innerHTML = '<div class="filter-wrapper">' +
             '<button class="filter-btn ' + actProximo + '" onclick="window.setFiltro(\'proximo\')">🔥 Próximo</button>' +
             '<button class="filter-btn ' + actPendientes + '" onclick="window.setFiltro(\'pendientes\')">⏳ Pendientes</button>' +
             '<button class="filter-btn ' + actTodos + '" onclick="window.setFiltro(\'todos\')">📅 Todos</button>' +
+            '<button class="filter-btn ' + actClasif + '" onclick="window.setFiltro(\'clasif\')">📊 RFFM</button>' +
           '</div>';
       } else { filterMenu.innerHTML = ''; }
 
@@ -1837,6 +1876,32 @@
                 if (!isFinalizado) { indiceProximo = i; break; }
              }
           }
+      }
+
+      const container = document.getElementById('matchList');
+      container.innerHTML = '';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+
+      if (!window.modoEdicion && window.modoMarcador === null && window.filtroVista === 'clasif') {
+          let rffmClasif = "https://www.rffm.es/competicion/clasificaciones?temporada=22&tipojuego=3&competicion=26738223&grupo=28169452";
+          let rffmCalend = "https://www.rffm.es/competicion/calendario?temporada=22&tipojuego=3&competicion=26738223&grupo=28169452";
+          
+          container.innerHTML = '<div class="card" style="text-align:center; padding:16px;">' +
+             '<h3 style="color:var(--dark); margin-bottom:12px;">🏆 RFFM Oficial</h3>' +
+             '<div style="display:flex; gap:10px; margin-bottom:15px;">' +
+               '<button onclick="document.getElementById(\'rffm-iframe\').src=\'' + rffmClasif + '\'" style="flex:1; background:#10b981; color:white; border:none; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📊 Clasificación</button>' +
+               '<button onclick="document.getElementById(\'rffm-iframe\').src=\'' + rffmCalend + '\'" style="flex:1; background:#3b82f6; color:white; border:none; padding:12px; border-radius:8px; font-size:0.9rem; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">📅 Calendario</button>' +
+             '</div>' +
+             '<p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;">Vista previa integrada en la App:</p>' +
+             '<iframe id="rffm-iframe" src="' + rffmClasif + '" style="width:100%; height:450px; border:1px solid #d1d5db; border-radius:8px; background:#fff;"></iframe>' +
+             '<div style="margin-top:12px; font-size:0.8rem;">' +
+                '<a href="#" onclick="window.open(document.getElementById(\'rffm-iframe\').src, \'_blank\'); return false;" style="color:#0ea5e9; font-weight:bold; text-decoration:none;">🌐 Abrir esto a pantalla completa</a>' +
+             '</div>' +
+             '</div>';
+             
+          document.getElementById('adminControls').innerHTML = '';
+          return; 
       }
 
       if (!window.modoEdicion && window.modoMarcador === null && indiceProximo !== -1 && appData.config.recordatorioPartido) {
@@ -1901,11 +1966,6 @@
               }
           }
       }
-
-      const container = document.getElementById('matchList');
-      container.innerHTML = '';
-      container.style.display = 'flex';
-      container.style.flexDirection = 'column';
 
       let partidosMostrados = 0;
 
@@ -1978,6 +2038,7 @@
                    if (window.modoEdicion && m.convocatoriaActiva) {
                        adminConvoTools += '<div style="display:flex; gap:8px; margin-top:8px;">' +
                          '<button onclick="window.forzarAvisoPadres(' + index + ')" style="background:#8b5cf6; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Fuerza a la app a sacar el popup a los padres pendientes">🔔 Forzar Aviso App</button>' +
+                         '<button onclick="window.enviarRecordatorioWA(' + index + ')" style="background:#25d366; color:white; border:none; padding:8px 10px; border-radius:6px; font-size:0.75rem; font-weight:bold; cursor:pointer; flex:1; box-shadow:0 1px 2px rgba(0,0,0,0.1);" title="Envía un texto al grupo para recordar que confirmen asistencia">📲 Enviar por WA</button>' +
                        '</div>';
                    }
                } else {
@@ -2465,7 +2526,7 @@
           onlineListHTML +
           '<button class="btn-new-season" onclick="window.generarNuevoEnlace()" style="margin-top:10px; opacity:0.8;">⚙️ Crear equipo nuevo año</button>' +
           '<button class="btn-new-season" onclick="window.limpiarCache()" style="margin-top:10px; background:#ef4444; color:white; font-weight:bold;">🔄 Forzar Actualización App (Anti-Caché)</button>' +
-          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.41 OFICIAL - Modo Administrador</div>'; 
+          '<div style="text-align:center; margin-top:20px; font-size:0.75rem; color:var(--text-muted); font-weight:bold;">v. 3.42 OFICIAL - Modo Administrador</div>'; 
       } else { adminControls.innerHTML = ''; }
 
       if (window.scrollToMatchId && window.modoMarcador === null) {
